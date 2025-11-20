@@ -1,0 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  font-size: 15px;
+}
+html, body, * {
+  font-family: 'Poppins', ui-sans-serif, system-ui, sans-serif !important;
+}
+/* Slim scrollbars */
+::-webkit-scrollbar {
+  width: 6px;   /* vertical scrollbar width */
+  height: 6px;  /* horizontal scrollbar height */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #9ca3af; /* gray-400 */
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #6b7280; /* gray-500 */
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Firefox support */
+* {
+  scrollbar-width: thin;      /* "auto" | "thin" */
+  scrollbar-color: #9ca3af transparent;
+}
+
+.filter-scroll {
+  overflow-y: hidden;
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
+}
+
+.filter-scroll:hover {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5f5 transparent;
+}
+
+.filter-scroll::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+}
+
+.filter-scroll:hover::-webkit-scrollbar {
+  width: 6px;
+}
+
+.filter-scroll:hover::-webkit-scrollbar-thumb {
+  background: #cbd5f5;
+  border-radius: 9999px;
+}

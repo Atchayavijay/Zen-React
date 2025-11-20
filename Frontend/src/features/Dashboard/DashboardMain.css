@@ -1,0 +1,19 @@
+
+
+
+/* Custom scrollbar for dashboard columns */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #bdbdbd;
+  border-radius: 8px;
+  min-height: 40px;
+  margin-left: 12px;
+}
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #bdbdbd #f0f1f5;
+  padding-right: 8px;
+}

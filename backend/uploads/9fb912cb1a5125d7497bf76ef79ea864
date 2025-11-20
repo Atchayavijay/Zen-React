@@ -1,0 +1,5 @@
+name,mobile_number,email,role,college_company,location,source,course_id,actual_fee,discounted_fee,fee_paid,fee_balance,comments,status,paid_status,assignee
+John Doe,+1234567890,john.doe@example.com,Student,ABC University,New York,Website,CRS-PYT-001,1000,800,400,400,Interested in Python,enquiry,partially paid,Assignee1
+Jane Smith,+1987654321,jane.smith@example.com,Professional,XYZ Corporation,Boston,Referral,CRS-PYT-001,1500,1200,600,600,Looking to switch to Python,enquiry,not paid,Assignee2
+Robert Brown,+1444555666,robert.brown@example.com,Student,LMN College,San Francisco,Email Campaign,CRS-PYT-001,1200,900,900,300,Requires additional guidance,enquiry,paid,Assignee3
+Emily Davis,+1222333444,emily.davis@example.com,Graduate,PQR College,Chicago,Online Ads,CRS-PYT-001,2000,1500,1500,500,Planning to enroll soon,enquiry,paid,Assignee4

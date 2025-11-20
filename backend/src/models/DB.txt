@@ -1,0 +1,1090 @@
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 16.4
+-- Dumped by pg_dump version 16.4
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- Name: uuid-ossp; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION "uuid-ossp"; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION "uuid-ossp" IS 'generate universally unique identifiers (UUIDs)';
+
+
+--
+-- Name: update_timestamp(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.update_timestamp() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$;
+
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: assignee; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.assignee (
+    assignee_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    assignee_name character varying(100) NOT NULL,
+    profile_image bytea,
+    email text,
+    mobile_number text,
+    country_code text DEFAULT '+91'::text
+);
+
+
+--
+-- Name: batch; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.batch (
+    batch_id integer NOT NULL,
+    batch_name character varying(255) NOT NULL,
+    start_date date,
+    end_date date,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    class_timing character varying(255),
+    days_of_week character varying[],
+    trainer_id integer
+);
+
+
+--
+-- Name: batch_batch_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.batch_batch_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: batch_batch_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.batch_batch_id_seq OWNED BY public.batch.batch_id;
+
+
+--
+-- Name: batch_trainers; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.batch_trainers (
+    batch_id integer NOT NULL,
+    trainer_id integer NOT NULL,
+    share_percentage numeric NOT NULL
+);
+
+
+--
+-- Name: card_type; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.card_type (
+    card_type_id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    card_type_name character varying(100) NOT NULL
+);
+
+
+--
+-- Name: comments; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.comments (
+    comment_id integer NOT NULL,
+    lead_id integer,
+    comment_text text NOT NULL,
+    created_at timestamp without time zone DEFAULT now(),
+    created_by character varying(255)
+);
+
+
+--
+-- Name: comments_comment_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.comments_comment_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: comments_comment_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.comments_comment_id_seq OWNED BY public.comments.comment_id;
+
+
+--
+-- Name: course; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.course (
+    course_id character varying(15) NOT NULL,
+    course_name character varying(255) NOT NULL,
+    course_type character varying(255) NOT NULL
+);
+
+
+--
+-- Name: course_course_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.course_course_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: course_course_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.course_course_id_seq OWNED BY public.course.course_id;
+
+
+--
+-- Name: deleted_leads; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.deleted_leads (
+    lead_id integer NOT NULL,
+    name character varying(255),
+    mobile_number character varying(15),
+    email character varying(255),
+    role character varying(50),
+    college_company character varying(255),
+    location character varying(255),
+    source character varying(255),
+    course character varying(255),
+    batch_id integer,
+    trainer_id integer,
+    actual_fee numeric(10,2),
+    discounted_fee numeric(10,2),
+    fee_paid numeric(10,2),
+    fee_balance numeric(10,2),
+    comments text,
+    status character varying(50),
+    paid_status character varying(50),
+    deletion_reason text,
+    course_id character varying
+);
+
+
+--
+-- Name: deleted_leads_lead_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.deleted_leads_lead_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: deleted_leads_lead_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.deleted_leads_lead_id_seq OWNED BY public.deleted_leads.lead_id;
+
+
+--
+-- Name: installments; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.installments (
+    installment_id integer NOT NULL,
+    lead_id integer,
+    amount numeric NOT NULL,
+    paid_amount numeric DEFAULT 0,
+    payment_date date,
+    payment_mode character varying(32),
+    remarks text,
+    installment_count integer
+);
+
+
+--
+-- Name: installments_installment_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.installments_installment_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: installments_installment_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.installments_installment_id_seq OWNED BY public.installments.installment_id;
+
+
+--
+-- Name: leads; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.leads (
+    lead_id integer NOT NULL,
+    name character varying(255) NOT NULL,
+    mobile_number character varying(15) NOT NULL,
+    email character varying(255),
+    college_company character varying(255),
+    location character varying(255),
+    actual_fee numeric,
+    discounted_fee numeric,
+    fee_paid numeric,
+    fee_balance numeric,
+    status character varying(50) DEFAULT 'enquiry'::character varying,
+    paid_status character varying(50) DEFAULT 'not paid'::character varying,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    enrollment_id character varying(255),
+    batch_id integer,
+    trainer_id integer,
+    course_id character varying(15) NOT NULL,
+    country_code character varying(10) DEFAULT '+91'::character varying,
+    unit_id uuid,
+    card_type_id uuid,
+    role_id uuid,
+    source_id uuid,
+    user_id uuid,
+    placement_fee numeric DEFAULT 0,
+    placement_paid numeric DEFAULT 0,
+    placement_balance numeric GENERATED ALWAYS AS ((placement_fee - placement_paid)) STORED,
+    referred_by_id uuid,
+    meta_campaign_id integer,
+    CONSTRAINT status_format_check CHECK (((status)::text = ANY ((ARRAY['enquiry'::character varying, 'prospect'::character varying, 'enrollment'::character varying, 'trainingprogress'::character varying, 'handsonproject'::character varying, 'certification'::character varying, 'cvbuild'::character varying, 'mockinterviews'::character varying, 'liveinterviews'::character varying, 'placement'::character varying, 'onhold'::character varying, 'archived'::character varying])::text[])))
+);
+
+
+--
+-- Name: leads_lead_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.leads_lead_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: leads_lead_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.leads_lead_id_seq OWNED BY public.leads.lead_id;
+
+
+--
+-- Name: meta_campaigns; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.meta_campaigns (
+    id integer NOT NULL,
+    name character varying(255) NOT NULL,
+    start_date date,
+    end_date date,
+    total_budget numeric(12,2),
+    status character varying(50),
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    description text
+);
+
+
+--
+-- Name: meta_campaigns_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.meta_campaigns_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: meta_campaigns_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.meta_campaigns_id_seq OWNED BY public.meta_campaigns.id;
+
+
+--
+-- Name: roles; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.roles (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    name text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: sources; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.sources (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    name text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: trainer; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.trainer (
+    trainer_id integer NOT NULL,
+    trainer_name character varying(255) NOT NULL,
+    trainer_mobile character varying(15) NOT NULL,
+    trainer_email character varying(255) NOT NULL
+);
+
+
+--
+-- Name: trainer_payouts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.trainer_payouts (
+    payout_id integer NOT NULL,
+    trainer_id integer,
+    lead_id integer,
+    installment_id integer,
+    amount numeric,
+    paid_on date,
+    status character varying(20)
+);
+
+
+--
+-- Name: trainer_payouts_payout_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.trainer_payouts_payout_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: trainer_payouts_payout_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.trainer_payouts_payout_id_seq OWNED BY public.trainer_payouts.payout_id;
+
+
+--
+-- Name: trainer_trainer_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.trainer_trainer_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: trainer_trainer_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.trainer_trainer_id_seq OWNED BY public.trainer.trainer_id;
+
+
+--
+-- Name: unit; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.unit (
+    unit_id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    unit_name character varying(100) NOT NULL
+);
+
+
+--
+-- Name: user_logs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_logs (
+    log_id integer NOT NULL,
+    username character varying(255) NOT NULL,
+    action character varying(50) NOT NULL,
+    "timestamp" timestamp without time zone DEFAULT now()
+);
+
+
+--
+-- Name: user_logs_log_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.user_logs_log_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: user_logs_log_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.user_logs_log_id_seq OWNED BY public.user_logs.log_id;
+
+
+--
+-- Name: user_roles; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_roles (
+    role_id integer NOT NULL,
+    role_name text NOT NULL
+);
+
+
+--
+-- Name: user_roles_role_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.user_roles_role_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: user_roles_role_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.user_roles_role_id_seq OWNED BY public.user_roles.role_id;
+
+
+--
+-- Name: users; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.users (
+    username character varying(255) NOT NULL,
+    password character varying(255) NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    email character varying(100),
+    mobile character varying(20),
+    profile_image bytea,
+    user_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    unit_id uuid,
+    role_id integer
+);
+
+
+--
+-- Name: batch batch_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.batch ALTER COLUMN batch_id SET DEFAULT nextval('public.batch_batch_id_seq'::regclass);
+
+
+--
+-- Name: comments comment_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.comments ALTER COLUMN comment_id SET DEFAULT nextval('public.comments_comment_id_seq'::regclass);
+
+
+--
+-- Name: course course_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.course ALTER COLUMN course_id SET DEFAULT nextval('public.course_course_id_seq'::regclass);
+
+
+--
+-- Name: deleted_leads lead_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deleted_leads ALTER COLUMN lead_id SET DEFAULT nextval('public.deleted_leads_lead_id_seq'::regclass);
+
+
+--
+-- Name: installments installment_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.installments ALTER COLUMN installment_id SET DEFAULT nextval('public.installments_installment_id_seq'::regclass);
+
+
+--
+-- Name: leads lead_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads ALTER COLUMN lead_id SET DEFAULT nextval('public.leads_lead_id_seq'::regclass);
+
+
+--
+-- Name: meta_campaigns id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.meta_campaigns ALTER COLUMN id SET DEFAULT nextval('public.meta_campaigns_id_seq'::regclass);
+
+
+--
+-- Name: trainer trainer_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.trainer ALTER COLUMN trainer_id SET DEFAULT nextval('public.trainer_trainer_id_seq'::regclass);
+
+
+--
+-- Name: trainer_payouts payout_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.trainer_payouts ALTER COLUMN payout_id SET DEFAULT nextval('public.trainer_payouts_payout_id_seq'::regclass);
+
+
+--
+-- Name: user_logs log_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_logs ALTER COLUMN log_id SET DEFAULT nextval('public.user_logs_log_id_seq'::regclass);
+
+
+--
+-- Name: user_roles role_id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_roles ALTER COLUMN role_id SET DEFAULT nextval('public.user_roles_role_id_seq'::regclass);
+
+
+--
+-- Name: assignee assignee_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assignee
+    ADD CONSTRAINT assignee_pkey PRIMARY KEY (assignee_id);
+
+
+--
+-- Name: batch batch_batch_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.batch
+    ADD CONSTRAINT batch_batch_name_key UNIQUE (batch_name);
+
+
+--
+-- Name: batch batch_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.batch
+    ADD CONSTRAINT batch_pkey PRIMARY KEY (batch_id);
+
+
+--
+-- Name: batch_trainers batch_trainers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.batch_trainers
+    ADD CONSTRAINT batch_trainers_pkey PRIMARY KEY (batch_id, trainer_id);
+
+
+--
+-- Name: card_type card_type_card_type_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.card_type
+    ADD CONSTRAINT card_type_card_type_name_key UNIQUE (card_type_name);
+
+
+--
+-- Name: card_type card_type_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.card_type
+    ADD CONSTRAINT card_type_pkey PRIMARY KEY (card_type_id);
+
+
+--
+-- Name: comments comments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.comments
+    ADD CONSTRAINT comments_pkey PRIMARY KEY (comment_id);
+
+
+--
+-- Name: course course_course_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.course
+    ADD CONSTRAINT course_course_name_key UNIQUE (course_name);
+
+
+--
+-- Name: course course_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.course
+    ADD CONSTRAINT course_pkey PRIMARY KEY (course_id);
+
+
+--
+-- Name: deleted_leads deleted_leads_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deleted_leads
+    ADD CONSTRAINT deleted_leads_pkey PRIMARY KEY (lead_id);
+
+
+--
+-- Name: installments installments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.installments
+    ADD CONSTRAINT installments_pkey PRIMARY KEY (installment_id);
+
+
+--
+-- Name: leads leads_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT leads_pkey PRIMARY KEY (lead_id);
+
+
+--
+-- Name: meta_campaigns meta_campaigns_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.meta_campaigns
+    ADD CONSTRAINT meta_campaigns_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: roles roles_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.roles
+    ADD CONSTRAINT roles_name_key UNIQUE (name);
+
+
+--
+-- Name: roles roles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.roles
+    ADD CONSTRAINT roles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: sources sources_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sources
+    ADD CONSTRAINT sources_name_key UNIQUE (name);
+
+
+--
+-- Name: sources sources_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sources
+    ADD CONSTRAINT sources_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: trainer_payouts trainer_payouts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.trainer_payouts
+    ADD CONSTRAINT trainer_payouts_pkey PRIMARY KEY (payout_id);
+
+
+--
+-- Name: trainer trainer_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.trainer
+    ADD CONSTRAINT trainer_pkey PRIMARY KEY (trainer_id);
+
+
+--
+-- Name: trainer trainer_trainer_email_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.trainer
+    ADD CONSTRAINT trainer_trainer_email_key UNIQUE (trainer_email);
+
+
+--
+-- Name: trainer trainer_trainer_mobile_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.trainer
+    ADD CONSTRAINT trainer_trainer_mobile_key UNIQUE (trainer_mobile);
+
+
+--
+-- Name: course unique_course_id; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.course
+    ADD CONSTRAINT unique_course_id UNIQUE (course_id);
+
+
+--
+-- Name: leads unique_lead; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT unique_lead UNIQUE (name, mobile_number, course_id);
+
+
+--
+-- Name: unit unit_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.unit
+    ADD CONSTRAINT unit_pkey PRIMARY KEY (unit_id);
+
+
+--
+-- Name: unit unit_unit_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.unit
+    ADD CONSTRAINT unit_unit_name_key UNIQUE (unit_name);
+
+
+--
+-- Name: user_logs user_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_logs
+    ADD CONSTRAINT user_logs_pkey PRIMARY KEY (log_id);
+
+
+--
+-- Name: user_roles user_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_roles
+    ADD CONSTRAINT user_roles_pkey PRIMARY KEY (role_id);
+
+
+--
+-- Name: user_roles user_roles_role_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_roles
+    ADD CONSTRAINT user_roles_role_name_key UNIQUE (role_name);
+
+
+--
+-- Name: users users_email_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_email_key UNIQUE (email);
+
+
+--
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (user_id);
+
+
+--
+-- Name: users users_username_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_username_key UNIQUE (username);
+
+
+--
+-- Name: idx_batch_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_batch_id ON public.leads USING btree (batch_id);
+
+
+--
+-- Name: idx_course_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_course_id ON public.leads USING btree (course_id);
+
+
+--
+-- Name: idx_course_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_course_type ON public.course USING btree (course_type);
+
+
+--
+-- Name: idx_lead_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lead_id ON public.leads USING btree (lead_id);
+
+
+--
+-- Name: idx_leads_meta_campaign_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_leads_meta_campaign_id ON public.leads USING btree (meta_campaign_id);
+
+
+--
+-- Name: idx_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_status ON public.leads USING btree (status);
+
+
+--
+-- Name: idx_trainer_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_trainer_id ON public.leads USING btree (trainer_id);
+
+
+--
+-- Name: batch trigger_update_timestamp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trigger_update_timestamp BEFORE UPDATE ON public.batch FOR EACH ROW EXECUTE FUNCTION public.update_timestamp();
+
+
+--
+-- Name: batch_trainers batch_trainers_batch_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.batch_trainers
+    ADD CONSTRAINT batch_trainers_batch_id_fkey FOREIGN KEY (batch_id) REFERENCES public.batch(batch_id) ON DELETE CASCADE;
+
+
+--
+-- Name: batch_trainers batch_trainers_trainer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.batch_trainers
+    ADD CONSTRAINT batch_trainers_trainer_id_fkey FOREIGN KEY (trainer_id) REFERENCES public.trainer(trainer_id) ON DELETE CASCADE;
+
+
+--
+-- Name: leads fk_batch; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT fk_batch FOREIGN KEY (batch_id) REFERENCES public.batch(batch_id);
+
+
+--
+-- Name: leads fk_course; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT fk_course FOREIGN KEY (course_id) REFERENCES public.course(course_id);
+
+
+--
+-- Name: leads fk_course_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT fk_course_id FOREIGN KEY (course_id) REFERENCES public.course(course_id);
+
+
+--
+-- Name: leads fk_leads_roles; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT fk_leads_roles FOREIGN KEY (role_id) REFERENCES public.roles(id);
+
+
+--
+-- Name: leads fk_leads_sources; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT fk_leads_sources FOREIGN KEY (source_id) REFERENCES public.sources(id);
+
+
+--
+-- Name: leads fk_leads_user; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT fk_leads_user FOREIGN KEY (user_id) REFERENCES public.users(user_id);
+
+
+--
+-- Name: batch fk_trainer; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.batch
+    ADD CONSTRAINT fk_trainer FOREIGN KEY (trainer_id) REFERENCES public.trainer(trainer_id);
+
+
+--
+-- Name: users fk_unit_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT fk_unit_id FOREIGN KEY (unit_id) REFERENCES public.unit(unit_id) ON DELETE SET NULL;
+
+
+--
+-- Name: installments installments_lead_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.installments
+    ADD CONSTRAINT installments_lead_id_fkey FOREIGN KEY (lead_id) REFERENCES public.leads(lead_id) ON DELETE CASCADE;
+
+
+--
+-- Name: leads leads_card_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT leads_card_type_id_fkey FOREIGN KEY (card_type_id) REFERENCES public.card_type(card_type_id);
+
+
+--
+-- Name: leads leads_meta_campaign_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT leads_meta_campaign_id_fkey FOREIGN KEY (meta_campaign_id) REFERENCES public.meta_campaigns(id);
+
+
+--
+-- Name: leads leads_referred_by_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT leads_referred_by_id_fkey FOREIGN KEY (referred_by_id) REFERENCES public.users(user_id) ON DELETE SET NULL;
+
+
+--
+-- Name: leads leads_trainer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT leads_trainer_id_fkey FOREIGN KEY (trainer_id) REFERENCES public.trainer(trainer_id);
+
+
+--
+-- Name: leads leads_unit_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leads
+    ADD CONSTRAINT leads_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES public.unit(unit_id);
+
+
+--
+-- Name: trainer_payouts trainer_payouts_installment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.trainer_payouts
+    ADD CONSTRAINT trainer_payouts_installment_id_fkey FOREIGN KEY (installment_id) REFERENCES public.installments(installment_id);
+
+
+--
+-- Name: trainer_payouts trainer_payouts_lead_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.trainer_payouts
+    ADD CONSTRAINT trainer_payouts_lead_id_fkey FOREIGN KEY (lead_id) REFERENCES public.leads(lead_id);
+
+
+--
+-- Name: trainer_payouts trainer_payouts_trainer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.trainer_payouts
+    ADD CONSTRAINT trainer_payouts_trainer_id_fkey FOREIGN KEY (trainer_id) REFERENCES public.trainer(trainer_id);
+
+
+--
+-- Name: users users_role_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user
+    ADD CONSTRAINT users_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.user_roles(role_id);
+
+
+--
+-- PostgreSQL database dump complete
+--
+
