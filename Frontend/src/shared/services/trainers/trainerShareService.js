@@ -18,6 +18,16 @@ const trainerShareService = {
       customDateTo: customDateTo || null,
     })
   },
+
+  async fetchTrainers() {
+    const response = await apiClient.get(endpoints.trainers.root)
+    return response.data
+  },
+
+  async fetchBatches() {
+    const response = await apiClient.get(endpoints.leads.batches)
+    return response.data
+  },
 }
 
 export default trainerShareService

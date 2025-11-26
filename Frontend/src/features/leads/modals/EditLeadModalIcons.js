@@ -25,13 +25,14 @@ import {
   FaChalkboardTeacher,
   FaHistory,
   FaCopy,
+  FaUsers,
 } from 'react-icons/fa';
 
 export const sectionIcons = {
   personal: FaUser,
   course: FaBook,
   subCourses: FaLayerGroup,
-  trainer: FaChalkboardTeacher,
+  trainer: FaUsers,
   assignee: FaUserTie,
   financial: FaUniversity,
   classification: FaTags,

@@ -1,10 +1,12 @@
 // File: src/components/Navbar.jsx
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   FaBell,
   FaCog,
   FaFilter,
   FaSearch,
+  FaTimes,
   FaSignOutAlt,
   FaTh,
   FaWhatsapp,
@@ -69,6 +71,7 @@ export default function Navbar({
   const [pendingFilters, setPendingFilters] = useState(buildEmptyFilters);
   const [userProfileImage, setUserProfileImage] = useState(null);
   const [username, setUsername] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Load user profile image and username from localStorage
   useEffect(() => {
@@ -99,6 +102,43 @@ export default function Navbar({
       console.warn("Unable to dispatch filter event", error);
     }
   }, []);
+
+  const dispatchSearchEvent = useCallback((term) => {
+    try {
+      if (typeof window !== "undefined" && window.dispatchEvent) {
+        window.dispatchEvent(
+          new CustomEvent("zen:leadSearch", {
+            detail: typeof term === "string" ? term : "",
+          })
+        );
+      }
+    } catch (error) {
+      console.warn("Unable to dispatch search event", error);
+    }
+  }, []);
+
+  const handleSearchChange = useCallback(
+    (event) => {
+      const value = event?.target?.value ?? "";
+      setSearchTerm(value);
+      dispatchSearchEvent(value);
+    },
+    [dispatchSearchEvent]
+  );
+
+  const handleSearchClear = useCallback(() => {
+    setSearchTerm("");
+    dispatchSearchEvent("");
+  }, [dispatchSearchEvent]);
+
+  const handleSearchKeyDown = useCallback(
+    (event) => {
+      if (event.key === "Escape") {
+        handleSearchClear();
+      }
+    },
+    [handleSearchClear]
+  );
 
   const filterSections = useMemo(() => {
     const toOptions = (items = [], labelKey = "name", valueKey = "id") =>
@@ -205,44 +245,45 @@ export default function Navbar({
   ]);
 
   const handleUndoClick = () => {
+    console.log('[Navbar] Undo clicked, handleUndo type:', typeof handleUndo);
     if (typeof handleUndo === "function") {
       const result = handleUndo();
+      console.log('[Navbar] Undo result:', result);
       if (result === false) {
         Swal.fire({
           icon: "info",
-          title: "Oops!",
-          text: "No actions to be reverted.",
-          showConfirmButton: false,
-          timer: 1400,
-          timerProgressBar: true,
-          position: "center",
-          toast: false,
-          showClass: { popup: "swal2-animate swal2-fade-in" },
-          hideClass: { popup: "swal2-animate swal2-fade-out" },
+          title: "Oops",
+          text: "No actions to undo.",
+          confirmButtonText: "OK",
+          confirmButtonColor: "#6366f1", // Indigo-500 to match the image style
         });
       }
+    } else {
+      console.log('[Navbar] handleUndo is not a function!');
     }
   };
 
   const handleRedoClick = () => {
+    console.log('[Navbar] Redo clicked, handleRedo type:', typeof handleRedo);
     if (typeof handleRedo === "function") {
       const result = handleRedo();
+      console.log('[Navbar] Redo result:', result);
       if (result === false) {
         Swal.fire({
           icon: "info",
-          title: "Oops!",
-          text: "No actions to be reverted.",
-          showConfirmButton: false,
-          timer: 1400,
-          timerProgressBar: true,
-          position: "center",
-          toast: false,
-          showClass: { popup: "swal2-animate swal2-fade-in" },
-          hideClass: { popup: "swal2-animate swal2-fade-out" },
+          title: "Oops",
+          text: "No actions to redo.",
+          confirmButtonText: "OK",
+          confirmButtonColor: "#6366f1",
         });
       }
+    } else {
+      console.log('[Navbar] handleRedo is not a function!');
     }
   };
+
+  const location = useLocation();
+  const isDashboard = location.pathname === "/dashboard";
 
   return (
     <nav className="fixed left-0 top-0 z-50 w-full border-b bg-white shadow-sm">
@@ -269,40 +310,57 @@ export default function Navbar({
             <input
               type="text"
               placeholder="Search"
-              className="w-full rounded-full border border-gray-200 py-0.5 pl-4 pr-2 text-sm shadow-sm focus:outline-none"
+              value={searchTerm}
+              onChange={handleSearchChange}
+              onKeyDown={handleSearchKeyDown}
+              className="w-full rounded-full border border-gray-200 py-0.5 pl-4 pr-6 text-sm shadow-sm focus:outline-none"
             />
             <FaSearch className="absolute right-2 top-2 text-sm text-gray-400" />
+            {searchTerm ? (
+              <button
+                type="button"
+                aria-label="Clear search"
+                onClick={handleSearchClear}
+                className="absolute right-7 top-1.5 text-gray-400 transition hover:text-gray-600"
+              >
+                <FaTimes size={12} />
+              </button>
+            ) : null}
           </div>
         </div>
 
         <div className="flex items-center gap-3 text-sm text-gray-400">
-          <button
-            onClick={handleUndoClick}
-            title="Undo"
-            className="flex h-6 w-6 items-center justify-center rounded shadow-sm transition-all duration-200 hover:bg-blue-100 hover:text-blue-600 active:scale-90"
-            style={{ boxShadow: "0 2px 8px 0 rgba(60,60,60,0.07)" }}
-            disabled={undoDisabled}
-          >
-            <MdUndo className="h-3 w-4" />
-          </button>
-          <button
-            onClick={handleRedoClick}
-            title="Redo"
-            className="flex h-6 w-6 items-center justify-center rounded shadow-sm transition-all duration-200 hover:bg-blue-100 hover:text-blue-600 active:scale-90"
-            style={{ boxShadow: "0 2px 8px 0 rgba(60,60,60,0.07)" }}
-            disabled={redoDisabled}
-          >
-            <MdRedo className="h-3 w-4" />
-          </button>
+          {isDashboard && (
+            <>
+              <button
+                onClick={handleUndoClick}
+                title="Undo"
+                className="flex h-6 w-6 items-center justify-center rounded shadow-sm transition-all duration-200 hover:bg-blue-100 hover:text-blue-600 active:scale-90"
+                style={{ boxShadow: "0 2px 8px 0 rgba(60,60,60,0.07)" }}
+                disabled={undoDisabled}
+              >
+                <MdUndo className="h-3 w-4" />
+              </button>
+              <button
+                onClick={handleRedoClick}
+                title="Redo"
+                className="flex h-6 w-6 items-center justify-center rounded shadow-sm transition-all duration-200 hover:bg-blue-100 hover:text-blue-600 active:scale-90"
+                style={{ boxShadow: "0 2px 8px 0 rgba(60,60,60,0.07)" }}
+                disabled={redoDisabled}
+              >
+                <MdRedo className="h-3 w-4" />
+              </button>
 
-          <button
-            onClick={() => setFilterOpen(true)}
-            className="inline-flex items-center justify-center"
-            aria-label="Open filters"
-            title="Filters"
-          >
-            <FaFilter className="text-gray-500" size={16} />
-          </button>
+              <button
+                onClick={() => setFilterOpen(true)}
+                className="inline-flex items-center justify-center"
+                aria-label="Open filters"
+                title="Filters"
+              >
+                <FaFilter className="text-gray-500" size={16} />
+              </button>
+            </>
+          )}
 
           <FullPageFilterModal
             isOpen={filterOpen}

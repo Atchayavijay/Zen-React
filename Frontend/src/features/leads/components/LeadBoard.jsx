@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
-import EditLeadModal from '@features/leads/modals/EditLeadModal'
+import EditLeadForm from '@features/leads/modals/EditLeadFormWrapper'
 import { handleCardDrop } from '@features/leads/utils/leadBoardUtils'
 
 function LeadBoard({ columns }) {
   const [showEdit, setShowEdit] = useState(false)
-  const [currentLead, setCurrentLead] = useState(null)
+  const [currentLeadId, setCurrentLeadId] = useState(null)
 
   const onDragEnd = async (result) => {
     const { destination, source, draggableId } = result
@@ -19,7 +19,7 @@ function LeadBoard({ columns }) {
   }
 
   const openEdit = (lead) => {
-    setCurrentLead(lead)
+    setCurrentLeadId(lead.id)
     setShowEdit(true)
   }
 
@@ -79,11 +79,14 @@ function LeadBoard({ columns }) {
         </div>
       </DragDropContext>
 
-      <EditLeadModal
+      <EditLeadForm
         open={showEdit}
         onClose={() => setShowEdit(false)}
-        lead={currentLead}
-        comments={currentLead?.comments || []}
+        leadId={currentLeadId}
+        onSaved={() => {
+          setShowEdit(false)
+          window.location.reload() // Refresh to show updated data
+        }}
       />
     </>
   )

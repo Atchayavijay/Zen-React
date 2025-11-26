@@ -4,6 +4,7 @@ import {
   isValidElement,
   useEffect,
   useState,
+  useCallback,
 } from "react";
 import Navbar from "@app/layout/Navbar";
 import Sidebar from "@app/layout/Sidebar";
@@ -11,10 +12,14 @@ import lookupService from "@shared/services/lookups/lookupService";
 
 function Layout({ children, onLogout }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [navbarProps, setNavbarProps] = useState({});
-  const [history, setHistory] = useState([]);
-  const [redoStack, setRedoStack] = useState([]);
-  const [columns, setColumns] = useState([]);
+  const [navbarProps, setNavbarPropsState] = useState({});
+  
+  // Wrap setNavbarProps with logging
+  const setNavbarProps = useCallback((props) => {
+    console.log('[Layout] setNavbarProps called with:', props);
+    setNavbarPropsState(props);
+  }, []);
+
   const [filterData, setFilterData] = useState({
     trainers: [],
     courseTypes: [],
@@ -32,29 +37,12 @@ function Layout({ children, onLogout }) {
     setSidebarOpen((open) => !open);
   };
 
-  const handleUndo = () => {
-    if (history.length === 0) return false;
-    setHistory((currentHistory) => {
-      if (currentHistory.length === 0) return currentHistory;
-      setRedoStack((currentRedo) => [columns, ...currentRedo]);
-      const previous = currentHistory[currentHistory.length - 1];
-      setColumns(previous);
-      return currentHistory.slice(0, -1);
-    });
-    return true;
-  };
+  // Debug: log when navbarProps changes
+  useEffect(() => {
+    console.log('[Layout] navbarProps updated:', navbarProps);
+  }, [navbarProps]);
 
-  const handleRedo = () => {
-    if (redoStack.length === 0) return false;
-    setRedoStack((currentRedo) => {
-      if (currentRedo.length === 0) return currentRedo;
-      setHistory((currentHistory) => [...currentHistory, columns]);
-      const next = currentRedo[0];
-      setColumns(next);
-      return currentRedo.slice(1);
-    });
-    return true;
-  };
+
 
   useEffect(() => {
     let cancelled = false;
@@ -169,14 +157,10 @@ function Layout({ children, onLogout }) {
           filtersError={filtersError}
           onFilterApply={handleFilterApply}
           onLogout={onLogout}
-          handleUndo={handleUndo}
-          handleRedo={handleRedo}
-          undoDisabled={history.length === 0}
-          redoDisabled={redoStack.length === 0}
           {...navbarProps}
         />
 
-        <main className="overflow-auto px-4 pt-14">{childrenWithProps}</main>
+        <main className="px-4 pt-14" style={{ height: "calc(100vh - 56px)", overflow: "hidden" }}>{childrenWithProps}</main>
       </div>
     </div>
   );

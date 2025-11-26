@@ -112,15 +112,30 @@ export default function TrainerShareMain() {
   const [sendingEmails, setSendingEmails] = useState(false)
   const [editingPayoutId, setEditingPayoutId] = useState(null)
   const [editingStatus, setEditingStatus] = useState(null)
+  const [allTrainers, setAllTrainers] = useState([])
+  const [allBatches, setAllBatches] = useState([])
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
       try {
-        const response = await trainerShareService.fetchPayouts()
-        const payoutRows = response?.payouts || []
+        const [payoutsResponse, trainersResponse, batchesResponse] = await Promise.all([
+          trainerShareService.fetchPayouts(),
+          trainerShareService.fetchTrainers(),
+          trainerShareService.fetchBatches()
+        ])
+        
+        const payoutRows = payoutsResponse?.payouts || []
         setPayouts(payoutRows)
         setFilteredPayouts(payoutRows)
+
+        if (trainersResponse?.success) setAllTrainers(trainersResponse.trainers || [])
+        
+        if (Array.isArray(batchesResponse)) {
+          setAllBatches(batchesResponse)
+        } else if (batchesResponse?.success) {
+          setAllBatches(batchesResponse.batches || [])
+        }
       } catch (error) {
         console.error('Failed to load trainer payouts', error)
         Swal.fire({
@@ -137,28 +152,20 @@ export default function TrainerShareMain() {
   }, [])
 
   const batchOptions = useMemo(() => {
-    const batches = new Map()
-    payouts.forEach((payout) => {
-      const label = payout.batch_name || 'Unassigned'
-      if (!batches.has(label)) {
-        batches.set(label, { value: label, label })
-      }
-    })
-    return Array.from(batches.values())
-  }, [payouts])
+    return allBatches
+      .map((b) => ({ value: b.batch_name, label: b.batch_name }))
+      .filter((opt) => opt.value) // Filter out empty names
+      .sort((a, b) => a.label.localeCompare(b.label))
+  }, [allBatches])
 
   const trainerOptions = useMemo(() => {
-    const trainers = new Map()
-    payouts.forEach((payout) => {
-      if (payout.trainer_id && payout.trainer_name) {
-        trainers.set(String(payout.trainer_id), {
-          value: String(payout.trainer_id),
-          label: payout.trainer_name,
-        })
-      }
-    })
-    return Array.from(trainers.values())
-  }, [payouts])
+    return allTrainers
+      .map((t) => ({
+        value: String(t.trainer_id),
+        label: t.trainer_name,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+  }, [allTrainers])
 
   const summary = useMemo(() => {
     return filteredPayouts.reduce(

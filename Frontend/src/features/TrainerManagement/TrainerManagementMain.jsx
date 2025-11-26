@@ -28,7 +28,7 @@ export default function TrainerManagementPage() {
     fetchTrainers();
   }, []);
 
-  const trainersEndpoint = `${API_BASE_URL}/api/trainers`
+  const trainersEndpoint = `${API_BASE_URL}api/trainers`
 
   async function fetchTrainers() {
     setLoading(true);

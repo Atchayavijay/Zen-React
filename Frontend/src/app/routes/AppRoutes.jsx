@@ -13,16 +13,16 @@ const PageLoader = () => (
   </div>
 );
 
-export default function AppRoutes() {
+export default function AppRoutes({ setNavbarProps }) {
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>
         {routeConfig.map(({ path, component: Component, isPublic }) => {
           const element = isPublic ? (
-            <Component />
+            <Component setNavbarProps={setNavbarProps} />
           ) : (
             <ProtectedRoute>
-              <Component />
+              <Component setNavbarProps={setNavbarProps} />
             </ProtectedRoute>
           );
 

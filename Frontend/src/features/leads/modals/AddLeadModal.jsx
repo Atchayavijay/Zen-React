@@ -1875,11 +1875,8 @@ const AddLeadModal = ({ open, onClose, onSaved }) => {
                         <input
                           type="number"
                           value={amountPaidTrainer}
-                          onChange={(e) => setAmountPaidTrainer(e.target.value)}
-                          placeholder="Enter Amount Paid To Trainer"
-                          min="0"
-                          step="0.01"
-                          className="w-full border rounded-md px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          readOnly
+                          className="w-full border rounded-md px-2.5 py-1.5 text-xs bg-gray-100 text-gray-600 border-gray-200 cursor-not-allowed focus:outline-none"
                         />
                       </div>
 
@@ -2041,16 +2038,8 @@ const AddLeadModal = ({ open, onClose, onSaved }) => {
                               <input
                                 type="number"
                                 value={sub.amount_paid_to_trainer}
-                                onChange={(e) =>
-                                  handleSubCourseChange(
-                                    idx,
-                                    "amount_paid_to_trainer",
-                                    e.target.value
-                                  )
-                                }
-                                min="0"
-                                step="0.01"
-                                className="w-full border rounded-md px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                readOnly
+                                className="w-full border rounded-md px-2.5 py-1.5 text-xs bg-gray-100 text-gray-600 border-gray-200 cursor-not-allowed focus:outline-none"
                 />
               </div>
 

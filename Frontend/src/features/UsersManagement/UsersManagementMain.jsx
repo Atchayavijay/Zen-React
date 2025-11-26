@@ -65,7 +65,7 @@ export default function UsersManagementMain() {
     setLoadingUsers(true);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/users`, {
+      const res = await fetch(`${API_BASE_URL}api/users`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       const data = await res.json();
@@ -84,7 +84,7 @@ export default function UsersManagementMain() {
 
     try {
 
-      const res = await fetch(`${API_BASE_URL}/api/user_roles`, {
+      const res = await fetch(`${API_BASE_URL}api/user_roles`, {
 
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
 
@@ -116,7 +116,7 @@ export default function UsersManagementMain() {
 
     try {
 
-      const res = await fetch(`${API_BASE_URL}/leads/units`, {
+      const res = await fetch(`${API_BASE_URL}leads/units`, {
 
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
 
@@ -195,7 +195,7 @@ export default function UsersManagementMain() {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         };
       }
-      const res = await fetch(`${API_BASE_URL}/api/users/${encodeURIComponent(id)}`, {
+      const res = await fetch(`${API_BASE_URL}api/users/${encodeURIComponent(id)}`, {
         method: "PUT",
         headers,
         body,
@@ -234,7 +234,7 @@ export default function UsersManagementMain() {
     if (!result.isConfirmed) return;
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/users/${encodeURIComponent(id)}`, {
+      const res = await fetch(`${API_BASE_URL}api/users/${encodeURIComponent(id)}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
@@ -317,7 +317,7 @@ export default function UsersManagementMain() {
 
 
 
-      const res = await fetch(`${API_BASE_URL}/api/users`, {
+      const res = await fetch(`${API_BASE_URL}api/users`, {
 
         method: "POST",
 

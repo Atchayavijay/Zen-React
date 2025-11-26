@@ -8,7 +8,7 @@ import { endpoints } from "@shared/api/endpoints";
 
 // Lazy load heavy modals - they're only needed when user clicks
 const AddLeadModal = lazy(() => import("@features/leads/modals/AddLeadModal.jsx"));
-const EditLeadModal = lazy(() => import("@features/leads/modals/EditLeadModal"));
+const EditLeadForm = lazy(() => import("@features/leads/modals/EditLeadFormWrapper"));
 
 // Lazy load sweetalert2 - only needed for notifications
 const loadSwal = () => import('sweetalert2');
@@ -135,7 +135,7 @@ function getUnitLogo(unitName) {
       <img
         src="/uc_icon.png"
         alt="Urbancode"
-        style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid #eee", objectFit: "cover", background: "#fff" }}
+        className="h-7 w-7 rounded-full border border-gray-200 object-cover bg-white"
       />
     );
   }
@@ -144,7 +144,7 @@ function getUnitLogo(unitName) {
       <img
         src="/jz_icon.png"
         alt="Jobzenter"
-        style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid #eee", objectFit: "cover", background: "#fff" }}
+        className="h-7 w-7 rounded-full border border-gray-200 object-cover bg-white"
       />
     );
   }
@@ -229,79 +229,90 @@ const LeadCard = React.memo(function LeadCard({ lead, onClick, isColumnHovered }
 
   return (
     <div
-      className="lead-card relative mb-3 flex h-[140px] min-h-[140px] w-[220px] min-w-[220px] max-w-[220px] cursor-pointer select-none flex-row items-stretch overflow-hidden rounded-lg border border-gray-200 bg-white pl-3 pr-1 pt-2 pb-2 shadow-sm transition hover:shadow-md"
+      className="lead-card relative mb-3 flex h-[140px] min-h-[140px] w-[220px] min-w-[220px] max-w-[220px] cursor-pointer select-none flex-col justify-between overflow-hidden rounded-lg border border-gray-200 bg-white p-3 shadow-sm transition hover:shadow-md"
       data-lead-id={lead.lead_id}
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="flex min-w-0 flex-1 flex-col justify-between">
-        {/* Status indicators */}
-        <div className="absolute right-12 top-[13px] z-20 flex items-center gap-[3px]">
-          {(cardType === "trainingonly" || cardType === "training&placement") &&
-            !!String(lead.paid_status || "").trim() && (
-              <StatusCircleFilled
-                color={paidStatusColor}
-                title={`Training Fee Status: ${lead.paid_status}`}
-              />
-            )}
-          {(cardType === "placementonly" || cardType === "training&placement") &&
-            !!String(lead.placement_paid_status || "").trim() && (
-              <StatusCircleOutline
-                color={placementStatusColor}
-                title={`Placement Fee Status: ${lead.placement_paid_status}`}
-              />
-            )}
-        </div>
+      {/* Status indicators */}
+      <div className="absolute right-12 top-[13px] z-20 flex items-center gap-[3px]">
+        {(cardType === "trainingonly" || cardType === "training&placement") &&
+          !!String(lead.paid_status || "").trim() && (
+            <StatusCircleFilled
+              color={paidStatusColor}
+              title={`Training Fee Status: ${lead.paid_status}`}
+            />
+          )}
+        {(cardType === "placementonly" || cardType === "training&placement") &&
+          !!String(lead.placement_paid_status || "").trim() && (
+            <StatusCircleOutline
+              color={placementStatusColor}
+              title={`Placement Fee Status: ${lead.placement_paid_status}`}
+            />
+          )}
+      </div>
 
-        {/* Time pill */}
-        <div className="absolute right-[10px] top-2 z-10 pr-2">
-          <span
-            className={`time inline-flex items-center rounded-sm px-2 py-[3px] text-[8px] leading-none text-white ${timeSpanClass}`}
-          >
-            {timeDiff.text}
-          </span>
-        </div>
+      {/* Time pill */}
+      <div className="absolute right-[10px] top-2 z-10">
+        <span
+          className={`time inline-flex items-center rounded-sm px-2 py-[3px] text-[8px] leading-none text-white ${timeSpanClass}`}
+        >
+          {timeDiff.text}
+        </span>
+      </div>
 
-        {/* Content */}
-        <div className="mb-0.5 w-full pt-2 text-[0.8rem] font-medium leading-tight text-slate-900">
+      {/* Main Content */}
+      <div className="w-full pt-1">
+        <div 
+          className="mb-0.5 w-[80%] text-[15px] font-medium leading-tight text-slate-800 truncate" 
+          title={formattedName}
+        >
           {formattedName}
         </div>
-        <p className="truncate text-[10px] font-medium text-slate-500">
-          Mobile: {lead.country_code} {lead.mobile_number}
-        </p>
-        <p className="truncate text-[10px] font-medium text-slate-500">
-          Course: {lead.course_name || "Course not found"}
-        </p>
-        <p className="truncate text-[10px] font-medium text-slate-500">
-          Fee Paid: {lead.fee_paid ?? "null"} <span className="text-slate-500">| Fee Bal: {lead.fee_balance ?? "null"}</span>
-        </p>
-        <p className="truncate text-[10px] font-medium text-slate-500">
-          Batch: {lead.batch_name || "Not Assigned"}
-        </p>
-        {/* Business Unit Logo below batch field */}
-        {unitLogo && <div className="mt-0.5">{unitLogo}</div>}
+        <div className="space-y-[1px]">
+          <p className="truncate text-[10px] font-medium text-slate-500">
+            Mobile: {lead.country_code} {lead.mobile_number}
+          </p>
+          <p className="truncate text-[10px] font-medium text-slate-500">
+            Course: {lead.course_name || "Course not found"}
+          </p>
+          <p className="truncate text-[10px] font-medium text-slate-500">
+            Fee Paid: {lead.fee_paid ?? "0"} <span className="text-slate-400">|</span> Fee Bal: {lead.fee_balance ?? "null"}
+          </p>
+          <p className="truncate text-[10px] font-medium text-slate-500">
+            Batch: {lead.batch_name || "Not Assigned"}
+          </p>
+        </div>
       </div>
-      <div
-        className="assignee-profile ml-1 mr-3 mt-[95px] flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#444] text-xs font-semibold uppercase text-white shadow-[0_1px_4px_rgba(60,60,60,0.10)]"
-        title={lead.assignee_name || "No Assignee"}
-      >
-        {assigneeProfileImage ? (
-          <img
-            src={`data:image/png;base64,${assigneeProfileImage}`}
-            alt={initials}
-            loading="lazy"
-            className="h-full w-full object-cover"
-            onError={(e) => {
-              e.target.onerror = null;
-              e.target.parentNode.innerHTML = initials;
-              e.target.parentNode.style.backgroundColor = "#444";
-            }}
-          />
-        ) : (
-          initials
-        )}
+
+      {/* Bottom Row: Unit Logo & Assignee */}
+      <div className="flex items-end justify-between mt-auto">
+        <div className="mb-[-2px]">
+          {unitLogo}
+        </div>
+        <div
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#444] text-xs font-semibold uppercase text-white shadow-sm"
+          title={lead.assignee_name || "No Assignee"}
+        >
+          {assigneeProfileImage ? (
+            <img
+              src={`data:image/png;base64,${assigneeProfileImage}`}
+              alt={initials}
+              loading="lazy"
+              className="h-full w-full rounded-full object-cover"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.parentNode.innerHTML = initials;
+              }}
+            />
+          ) : (
+            initials
+          )}
+        </div>
       </div>
+
+      {/* Accent Line */}
       <div
         className={`pointer-events-none absolute inset-y-0 right-0 w-1 rounded-r-lg bg-[#111] transition-opacity ${accentOpacityClass}`}
       />
@@ -326,17 +337,30 @@ const LeadCard = React.memo(function LeadCard({ lead, onClick, isColumnHovered }
 const LeadColumnHeader = React.memo(function LeadColumnHeader({ title, color, count }) {
   return (
     <div
-      className={`mb-4 w-[220px] max-w-[220px] min-w-[220px] truncate rounded-[5px] px-2.5 py-2 text-center text-base font-semibold tracking-[0.02em] text-white shadow-[0_2px_6px_rgba(0,0,0,0.08)] ${color}`}
+      className={`mb-4 w-[220px] max-w-[220px] min-w-[220px] truncate rounded-[5px] px-2.5 py-2 text-center text-[15px] font-medium tracking-[0.02em] text-white shadow-[0_2px_6px_rgba(0,0,0,0.08)] ${color}`}
       title={title}
     >
-      {title} ({count ?? 0})
+      {title}({count ?? 0})
     </div>
   );
 });
 
 /* ---------- page ---------- */
-export default function Dashboard() {
-  const [columns, setColumns] = useState([]); // [{key,title,color,leads:[]}
+export default function Dashboard({ setNavbarProps }) {
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const prevBodyBg = document.body.style.backgroundColor;
+    const prevHtmlBg = document.documentElement.style.backgroundColor;
+    document.body.style.backgroundColor = "#f0f1f5";
+    document.documentElement.style.backgroundColor = "#f0f1f5";
+    return () => {
+      document.body.style.backgroundColor = prevBodyBg;
+      document.documentElement.style.backgroundColor = prevHtmlBg;
+    };
+  }, []);
+  console.log('[Dashboard] Component rendered, setNavbarProps:', typeof setNavbarProps);
+  
+  const [columns, setColumns] = useState([]); // base dataset
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = React.useState(false);
@@ -348,6 +372,7 @@ export default function Dashboard() {
   const [history, setHistory] = useState([]); // stack of previous columns
   const [redoStack, setRedoStack] = useState([]); // stack of redo columns
   const [columnHoverIndex, setColumnHoverIndex] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   /* ---------- fetch courses ---------- */
   useEffect(() => {
@@ -565,6 +590,66 @@ export default function Dashboard() {
     loadBoard();
   }, [loadBoard]);
 
+  useEffect(() => {
+    const handleLeadUpdated = () => {
+      loadBoard(appliedFilters);
+    };
+    if (typeof window !== "undefined" && window.addEventListener) {
+      window.addEventListener("zen:leadUpdated", handleLeadUpdated);
+    }
+    return () => {
+      if (typeof window !== "undefined" && window.removeEventListener) {
+        window.removeEventListener("zen:leadUpdated", handleLeadUpdated);
+      }
+    };
+  }, [appliedFilters, loadBoard]);
+
+  // Keep dashboard search in sync with navbar search box
+  useEffect(() => {
+    function onSearchEvent(event) {
+      const nextQuery = typeof event?.detail === "string" ? event.detail : "";
+      setSearchQuery(nextQuery);
+    }
+    if (typeof window !== "undefined" && window.addEventListener) {
+      window.addEventListener("zen:leadSearch", onSearchEvent);
+    }
+    return () => {
+      if (typeof window !== "undefined" && window.removeEventListener) {
+        window.removeEventListener("zen:leadSearch", onSearchEvent);
+      }
+    };
+  }, []);
+
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const isSearchActive = normalizedSearch.length > 0;
+
+  const filteredColumns = useMemo(() => {
+    if (!isSearchActive) {
+      return columns;
+    }
+
+    const matchesSearch = (lead = {}) => {
+      const name = (lead.name || "").toLowerCase();
+      return name.includes(normalizedSearch);
+    };
+
+    return columns.map((col) => ({
+      ...col,
+      leads: (col.leads || []).filter(matchesSearch),
+    }));
+  }, [columns, isSearchActive, normalizedSearch]);
+
+  const totalCards = useMemo(
+    () => columns.reduce((sum, col) => sum + (col.leads?.length || 0), 0),
+    [columns]
+  );
+
+  const visibleCards = useMemo(
+    () =>
+      filteredColumns.reduce((sum, col) => sum + (col.leads?.length || 0), 0),
+    [filteredColumns]
+  );
+
   // Listen for global filter events dispatched by FilterDropdown (from Navbar)
   useEffect(() => {
     function onGlobalFilters(e) {
@@ -599,6 +684,24 @@ export default function Dashboard() {
   }, []);
 
   const onDragEnd = useCallback(async (result) => {
+    if (isSearchActive) {
+      loadSwal().then(({ default: Swal }) => {
+        Swal.fire({
+          icon: 'info',
+          title: 'Search active',
+          text: 'Clear the search to move cards.',
+          timer: 1300,
+          showConfirmButton: false,
+          position: 'center',
+          toast: false,
+        });
+      });
+    }
+
+    if (isSearchActive || !result) {
+      return;
+    }
+
     const { destination, source } = result;
     if (!destination) return;
     if (
@@ -654,37 +757,61 @@ export default function Dashboard() {
 
       return nextColumns;
     });
-  }, []);
+  }, [isSearchActive]);
 
   // Undo/Redo handlers
-  const handleUndo = () => {
+  const handleUndo = useCallback(() => {
+    console.log('[Dashboard] handleUndo called, history length:', history.length);
     if (history.length === 0) return false;
-    setHistory((h) => {
-      if (h.length === 0) return h;
-      setRedoStack((r) => [columns, ...r]);
-      const prev = h[h.length - 1];
-      setColumns(prev);
-      return h.slice(0, -1);
+    
+    setColumns((currentColumns) => {
+      setHistory((h) => {
+        if (h.length === 0) return h;
+        setRedoStack((r) => [currentColumns, ...r]);
+        const prev = h[h.length - 1];
+        console.log('[Dashboard] Undo: restoring previous state');
+        return h.slice(0, -1);
+      });
+      return history[history.length - 1];
     });
     return true;
-  };
+  }, [history]);
 
-  const handleRedo = () => {
+  const handleRedo = useCallback(() => {
+    console.log('[Dashboard] handleRedo called, redoStack length:', redoStack.length);
     if (redoStack.length === 0) return false;
-    setRedoStack((r) => {
-      if (r.length === 0) return r;
-      setHistory((h) => [...h, columns]);
-      const next = r[0];
-      setColumns(next);
-      return r.slice(1);
+    
+    setColumns((currentColumns) => {
+      setHistory((h) => [...h, currentColumns]);
+      const next = redoStack[0];
+      console.log('[Dashboard] Redo: restoring next state');
+      setRedoStack((r) => r.slice(1));
+      return next;
     });
     return true;
-  };
+  }, [redoStack]);
+
+  // Register undo/redo handlers with Navbar
+  useEffect(() => {
+    console.log('[Dashboard] Registering undo/redo with Navbar');
+    if (setNavbarProps) {
+      setNavbarProps({
+        handleUndo,
+        handleRedo,
+        undoDisabled: false, // Always enable to allow clicking and showing alert
+        redoDisabled: false, // Always enable to allow clicking and showing alert
+      });
+    }
+  }, [setNavbarProps, handleUndo, handleRedo]);
+
 
 
 
   return (
-  <div className="w-full min-h-screen h-screen flex flex-col" style={{ minHeight: '100vh', height: '100vh', marginLeft: 0, paddingLeft: 0, background: '#ffffffff', overflow: 'hidden' }}>
+    <div
+      className="flex w-full flex-col overflow-hidden bg-gray-100"
+      style={{ height: "calc(100vh - 56px)", minHeight: "calc(100vh - 56px)" }}
+    >
       {/* Navbar is now only provided by Layout. Undo/redo handlers can be passed via context or props if needed. */}
            {/* Navbar with undo/redo handlers */}
       {/* <Navbar
@@ -695,32 +822,26 @@ export default function Dashboard() {
       /> */}
 
       {/* board with Add Lead button */}
-      <div
-        className="flex-1 flex flex-col pb-2"
-        style={{
-          background: '#f3f4f6',
-          minHeight: 0,
-          borderRadius: 12,
-          boxShadow: '0 2px 8px 0 rgba(60,60,60,0.04)',
-          width: '100%',
-          overflowX: 'visible',
-        }}
-      >
-        <div className="flex items-center justify-between mb-4 pt-4 px-4">
+      <div className="flex flex-1 w-full flex-col rounded-2xl bg-gray-100 pb-2 shadow-md overflow-hidden" style={{ minHeight: 0, height: "100%" }}>
+        <div className="flex items-center justify-between mb-4 pt-4 px-4 flex-shrink-0">
           <button
             onClick={() => setAddOpen(true)}
-            className="bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2.5 rounded shadow-md transition-all duration-150"
-            style={{ fontSize: 16, letterSpacing: 0.2 }}
+            className="rounded bg-red-500 px-4 py-2.5 font-semibold text-base tracking-wide text-white shadow-md transition-all duration-150 hover:bg-red-600"
           >
             + Add Lead
           </button>
+          {isSearchActive && (
+            <p className="text-sm text-gray-600">
+              Showing {visibleCards} of {totalCards} cards matching “{searchQuery}”
+            </p>
+          )}
         </div>
         <DragDropContext onDragEnd={onDragEnd}>
           <div
-            className="flex gap-6 flex-1 h-full px-2"
-            style={{ height: '100%', width: '100%', minWidth: 0 }}
+            className="flex w-full flex-1 min-w-0 gap-6 px-4 pb-6 overflow-x-auto bg-gray-100"
+            style={{ minHeight: 0, height: "100%", overflowY: "hidden" }}
           >
-            {columns.map((col, colIdx) => {
+            {filteredColumns.map((col, colIdx) => {
               const isColumnHovered = columnHoverIndex === colIdx;
               
               return (
@@ -729,8 +850,7 @@ export default function Dashboard() {
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      className="min-w-[220px] w-[220px] max-w-[220px] flex flex-col h-full"
-                      style={{ minHeight: 0, height: '100%', flex: '0 0 220px' }}
+                      className="flex h-full min-h-0 w-[220px] min-w-[220px] max-w-[220px] flex-col flex-none"
                       onMouseEnter={() => setColumnHoverIndex(colIdx)}
                       onMouseLeave={() => setColumnHoverIndex(null)}
                     >
@@ -739,27 +859,15 @@ export default function Dashboard() {
                         color={col.color}
                         count={col.leads?.length}
                       />
-                      <div
-                        className="flex-1 overflow-y-auto custom-scrollbar"
-                        style={{
-                          minHeight: 0,
-                          height: '100%',
-                          padding: '4px 2px 4px 2px',
-                          overflowX: 'hidden',
-                          overflowY: 'auto',
-                          width: 220,
-                          maxWidth: 220,
-                          minWidth: 220,
-                          // Removed position: 'relative' and persistent black line
-                        }}
-                      >
+                      <div className="custom-scrollbar flex-1 min-h-0 h-full w-[220px] min-w-[220px] max-w-[220px] overflow-y-auto overflow-x-hidden px-[2px] py-1 rounded-md bg-gray-100/90">
                         {col.leads.map((lead, idx) => {
                           // Use lead_id as key for better React reconciliation
                           return (
-                            <Draggable
+                              <Draggable
                               key={lead.lead_id}
                               draggableId={String(lead.lead_id)}
                               index={idx}
+                                isDragDisabled={isSearchActive}
                             >
                               {(provided) => (
                                 <div
@@ -789,9 +897,9 @@ export default function Dashboard() {
       </div>
 
       {/* {loading && (
-        <div className="absolute left-0 right-0 top-0 bottom-0 flex items-center justify-center z-30" style={{pointerEvents:'none'}}>
-          <div className="flex flex-col items-center gap-4 bg-white/90 text-gray-800 px-8 py-8 rounded-xl shadow-2xl animate-fadeIn border border-gray-200" style={{minWidth: 220}}>
-            <svg className="animate-spin" style={{width:48,height:48,marginBottom:8}} viewBox="0 0 50 50">
+        <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
+          <div className="min-w-[220px] rounded-xl border border-gray-200 bg-white/90 px-8 py-8 text-gray-800 shadow-2xl animate-fadeIn">
+            <svg className="mb-2 h-12 w-12 animate-spin" viewBox="0 0 50 50">
               <circle className="opacity-25" cx="25" cy="25" r="22" fill="none" stroke="#e5e7eb" strokeWidth="6" />
               <circle className="opacity-90" cx="25" cy="25" r="22" fill="none" stroke="#f87171" strokeWidth="6" strokeDasharray="34.6 103.6" strokeLinecap="round" />
             </svg>
@@ -822,23 +930,13 @@ export default function Dashboard() {
         <Suspense fallback={<div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
         </div>}>
-          <EditLeadModal
+          <EditLeadForm
             open={editOpen}
-            lead={selectedLead}
+            leadId={selectedLead?.lead_id}
             onClose={() => setEditOpen(false)}
-            onUpdated={async (archived) => {
-              if (archived && selectedLead) {
-                // Remove the archived lead from the board immediately
-                setColumns((prevCols) =>
-                  prevCols.map((col) => ({
-                    ...col,
-                    leads: col.leads.filter((l) => l.lead_id !== selectedLead.lead_id)
-                  }))
-                );
-                setEditOpen(false);
-              } else {
-                await loadBoard();
-              }
+            onSaved={async () => {
+              await loadBoard();
+              setEditOpen(false);
             }}
           />
         </Suspense>

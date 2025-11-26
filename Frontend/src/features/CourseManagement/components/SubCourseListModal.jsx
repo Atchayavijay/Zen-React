@@ -127,17 +127,17 @@ const SubCourseListModal = ({
                         <div className="flex items-center gap-3">
                           <button
                             onClick={() => onEditClick?.(subCourse)}
-                            className="inline-flex items-center gap-1 rounded-md border border-indigo-200 px-3 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50"
+                            title="Edit"
+                            className="inline-flex items-center justify-center rounded-md border border-indigo-200 p-2 text-indigo-600 hover:bg-indigo-50 transition-colors"
                           >
-                            <FiEdit2 className="text-sm" />
-                            Edit
+                            <FiEdit2 className="text-base" />
                           </button>
                           <button
                             onClick={() => onDelete?.(subCourse)}
-                            className="inline-flex items-center gap-1 rounded-md border border-red-200 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                            title="Delete"
+                            className="inline-flex items-center justify-center rounded-md border border-red-200 p-2 text-red-600 hover:bg-red-50 transition-colors"
                           >
-                            <FiTrash2 className="text-sm" />
-                            Delete
+                            <FiTrash2 className="text-base" />
                           </button>
                         </div>
                       </td>

@@ -47,7 +47,7 @@ exports.createTrainer = async (req, res) => {
 exports.getAllTrainers = async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT * FROM trainer ORDER BY trainer_name ASC"
+      "SELECT * FROM trainer WHERE is_active = true ORDER BY trainer_name ASC"
     );
 
     res.status(200).json({ success: true, trainers: result.rows });
@@ -93,15 +93,15 @@ exports.updateTrainer = async (req, res) => {
 };
 
 /**
- * DELETE: Remove trainer by ID
+ * DELETE: Soft delete trainer by ID (sets is_active = false)
  */
 exports.deleteTrainer = async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Delete trainer from database
+    // Soft delete: set is_active to false
     const result = await pool.query(
-      "DELETE FROM trainer WHERE trainer_id = $1 RETURNING *",
+      "UPDATE trainer SET is_active = false WHERE trainer_id = $1 RETURNING *",
       [id]
     );
 
@@ -111,10 +111,10 @@ exports.deleteTrainer = async (req, res) => {
 
     res
       .status(200)
-      .json({ success: true, message: "Trainer deleted successfully" });
+      .json({ success: true, message: "Trainer deactivated successfully" });
   } catch (err) {
-    console.error("❌ Error deleting trainer:", err.message);
-    res.status(500).json({ error: "Failed to delete trainer." });
+    console.error("❌ Error deactivating trainer:", err.message);
+    res.status(500).json({ error: "Failed to deactivate trainer." });
   }
 };
 
@@ -289,9 +289,9 @@ exports.updateTrainerPayoutStatus = async (req, res) => {
       const trainer_id = parseInt(parts[1]);
 
       if (!installment_id || !trainer_id) {
-        return res.status(400).json({ 
-          success: false, 
-          error: "Invalid payout ID format" 
+        return res.status(400).json({
+          success: false,
+          error: "Invalid payout ID format"
         });
       }
 
@@ -311,8 +311,8 @@ exports.updateTrainerPayoutStatus = async (req, res) => {
            WHERE payout_id = $3`,
           [status, paid_on, existingPayoutId]
         );
-        return res.json({ 
-          success: true, 
+        return res.json({
+          success: true,
           message: "Status updated successfully",
           payout_id: existingPayoutId
         });
@@ -326,18 +326,18 @@ exports.updateTrainerPayoutStatus = async (req, res) => {
         );
 
         if (installmentRes.rowCount === 0) {
-          return res.status(404).json({ 
-            success: false, 
-            error: "Installment not found" 
+          return res.status(404).json({
+            success: false,
+            error: "Installment not found"
           });
         }
 
         const { lead_id, paid_amount } = installmentRes.rows[0];
-        
+
         // Get trainer share percentage from lead_sub_courses or leads table
         let trainerShare = 0;
         let amount = 0;
-        
+
         // Check if it's a sub-course (parts.length === 3) or single course (parts.length === 2)
         if (parts.length === 3) {
           // Sub-course: format is "installment_id_trainer_id_sub_course_id"
@@ -362,7 +362,7 @@ exports.updateTrainerPayoutStatus = async (req, res) => {
             amount = (parseFloat(paid_amount || 0) * trainerShare) / 100;
           }
         }
-        
+
         const insertRes = await pool.query(
           `INSERT INTO trainer_payouts (trainer_id, lead_id, installment_id, amount, status, paid_on)
            VALUES ($1, $2, $3, $4, $5, $6)
@@ -370,8 +370,8 @@ exports.updateTrainerPayoutStatus = async (req, res) => {
           [trainer_id, lead_id, installment_id, amount, status, paid_on]
         );
 
-        return res.json({ 
-          success: true, 
+        return res.json({
+          success: true,
           message: "Payout created and status set successfully",
           payout_id: insertRes.rows[0].payout_id
         });

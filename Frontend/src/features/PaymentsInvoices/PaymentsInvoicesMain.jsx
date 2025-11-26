@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
 import { API_BASE_URL } from "@shared/api/client";
 import { getPageColors } from "@shared/utils/pageColors";
 import {
-  BsArrowClockwise,
   BsCalendarEvent,
   BsCashCoin,
   BsCashStack,
@@ -18,10 +18,44 @@ import {
 } from "react-icons/bs";
 import { FiX } from "react-icons/fi";
 import { BiSearch, BiFilterAlt } from "react-icons/bi";
+import Swal from "sweetalert2";
+import "sweetalert2/dist/sweetalert2.min.css";
+import PaymentFilterModal from "./PaymentFilterModal";
 import "./PaymentsInvoicesMain.css";
 
 const PAYMENT_MODES = ["Cash", "UPI", "Card", "Bank Transfer", "Other"];
 const todayISO = () => new Date().toISOString().slice(0, 10);
+
+// const Toast = Swal.mixin({
+//   toast: true,
+//   position: 'top-end',
+//   zIndex: 99999,
+//   showConfirmButton: false,
+//   timer: 3000,
+//   timerProgressBar: true,
+//   didOpen: (toast) => {
+//     toast.addEventListener('mouseenter', Swal.stopTimer)
+//     toast.addEventListener('mouseleave', Swal.resumeTimer)
+//   }
+// });
+
+
+
+const Toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  customClass: {
+    container: 'my-toast-zindex'
+  },
+  didOpen: (toast) => {
+    toast.addEventListener('mouseenter', Swal.stopTimer)
+    toast.addEventListener('mouseleave', Swal.resumeTimer)
+  }
+});
+
 
 const initialFeeSummary = {
   actual_fee: 0,
@@ -47,15 +81,15 @@ export default function PaymentInvoicesMain() {
   const [logsFilter, setLogsFilter] = useState("");
   const [sort, setSort] = useState({ key: "payment_date", direction: "desc" });
   
-  // Filter states
+  // Filter states - changed to arrays for multiple selection
   const [filters, setFilters] = useState({
-    course: "",
-    batch: "",
-    trainer: "",
-    paymentMode: "",
-    dateFrom: "",
-    dateTo: "",
+    courses: [],
+    batches: [],
+    trainers: [],
+    paymentModes: [],
   });
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -80,6 +114,9 @@ export default function PaymentInvoicesMain() {
   const [shareRows, setShareRows] = useState([]);
   const [feeTab, setFeeTab] = useState("course");
   const [hasRecordedPayment, setHasRecordedPayment] = useState(false);
+
+  const [allTrainers, setAllTrainers] = useState([]);
+  const [allBatches, setAllBatches] = useState([]);
 
   const request = useCallback(
     async (path, options = {}) => {
@@ -110,7 +147,7 @@ export default function PaymentInvoicesMain() {
   const loadLogs = useCallback(async () => {
     setLogsLoading(true);
     try {
-      const data = await request("/leads/all-installments");
+      const data = await request("leads/all-installments");
       const rows = data?.installments || data?.data || [];
       setLogs(Array.isArray(rows) ? rows : []);
     } catch (err) {
@@ -121,9 +158,33 @@ export default function PaymentInvoicesMain() {
     }
   }, [request]);
 
+  const loadFilters = useCallback(async () => {
+    try {
+      const [trainersRes, batchesRes] = await Promise.all([
+        request("api/trainers"),
+        request("leads/batches")
+      ]);
+      
+      if (trainersRes?.success && Array.isArray(trainersRes.trainers)) {
+        setAllTrainers(trainersRes.trainers);
+      }
+      
+      // getBatches returns the array directly
+      if (Array.isArray(batchesRes)) {
+        setAllBatches(batchesRes);
+      } else if (batchesRes?.success && Array.isArray(batchesRes.batches)) {
+        // Fallback in case backend changes
+        setAllBatches(batchesRes.batches);
+      }
+    } catch (err) {
+      console.error("Failed to load filter options:", err);
+    }
+  }, [request]);
+
   useEffect(() => {
     loadLogs();
-  }, [loadLogs]);
+    loadFilters();
+  }, [loadLogs, loadFilters]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -136,25 +197,21 @@ export default function PaymentInvoicesMain() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [leadOptionsOpen]);
 
-  // Get unique filter options from logs
+  // Get unique filter options
   const filterOptions = useMemo(() => {
     const courses = new Set();
-    const batches = new Set();
-    const trainers = new Set();
     
     logs.forEach((log) => {
       if (log.course_name) courses.add(log.course_name);
-      if (log.batch_name) batches.add(log.batch_name);
-      if (log.trainer_name) trainers.add(log.trainer_name);
     });
 
     return {
       courses: Array.from(courses).sort(),
-      batches: Array.from(batches).sort(),
-      trainers: Array.from(trainers).sort(),
+      batches: allBatches.map(b => b.batch_name).filter(Boolean).sort(),
+      trainers: allTrainers.map(t => t.trainer_name).filter(Boolean).sort(),
       paymentModes: PAYMENT_MODES,
     };
-  }, [logs]);
+  }, [logs, allBatches, allTrainers]);
 
   const filteredLogs = useMemo(() => {
     const search = logsFilter.trim().toLowerCase();
@@ -177,37 +234,40 @@ export default function PaymentInvoicesMain() {
       });
     }
     
-    // Apply dropdown filters
-    if (filters.course) {
-      rows = rows.filter((log) => log.course_name === filters.course);
+    // Apply dropdown filters (now supporting multiple selections)
+    if (filters.courses && filters.courses.length > 0) {
+      rows = rows.filter((log) => filters.courses.includes(log.course_name));
     }
-    if (filters.batch) {
-      rows = rows.filter((log) => log.batch_name === filters.batch);
+    if (filters.batches && filters.batches.length > 0) {
+      rows = rows.filter((log) => filters.batches.includes(log.batch_name));
     }
-    if (filters.trainer) {
-      rows = rows.filter((log) => log.trainer_name === filters.trainer);
+    if (filters.trainers && filters.trainers.length > 0) {
+      rows = rows.filter((log) => filters.trainers.includes(log.trainer_name));
     }
-    if (filters.paymentMode) {
-      rows = rows.filter((log) => log.payment_mode === filters.paymentMode);
+    if (filters.paymentModes && filters.paymentModes.length > 0) {
+      rows = rows.filter((log) => filters.paymentModes.includes(log.payment_mode));
     }
-    if (filters.dateFrom) {
+    
+    // Apply date filters
+    if (dateFrom) {
       rows = rows.filter((log) => {
         if (!log.payment_date) return false;
         const logDate = new Date(log.payment_date);
-        const fromDate = new Date(filters.dateFrom);
+        const fromDate = new Date(dateFrom);
         fromDate.setHours(0, 0, 0, 0);
         return logDate >= fromDate;
       });
     }
-    if (filters.dateTo) {
+    if (dateTo) {
       rows = rows.filter((log) => {
         if (!log.payment_date) return false;
         const logDate = new Date(log.payment_date);
-        const toDate = new Date(filters.dateTo);
+        const toDate = new Date(dateTo);
         toDate.setHours(23, 59, 59, 999);
         return logDate <= toDate;
       });
     }
+    
     if (sort.key) {
       rows.sort((a, b) => {
         const aVal = a[sort.key];
@@ -226,7 +286,7 @@ export default function PaymentInvoicesMain() {
       });
     }
     return rows;
-  }, [logs, logsFilter, sort, filters]);
+  }, [logs, logsFilter, sort, filters, dateFrom, dateTo]);
 
   const changeSort = (key) => {
     setSort((prev) => {
@@ -240,24 +300,63 @@ export default function PaymentInvoicesMain() {
     });
   };
 
-  const handleFilterChange = (key, value) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const resetFilters = () => {
-    setFilters({
-      course: "",
-      batch: "",
-      trainer: "",
-      paymentMode: "",
-      dateFrom: "",
-      dateTo: "",
+  const handleToggleFilter = (sectionKey, value) => {
+    setFilters((prev) => {
+      const currentValues = prev[sectionKey] || [];
+      const nextValues = currentValues.includes(value)
+        ? currentValues.filter((v) => v !== value)
+        : [...currentValues, value];
+      return { ...prev, [sectionKey]: nextValues };
     });
   };
 
+  const handleClearFilters = () => {
+    setFilters({
+      courses: [],
+      batches: [],
+      trainers: [],
+      paymentModes: [],
+    });
+    setDateFrom("");
+    setDateTo("");
+  };
+
+  const handleApplyFilters = () => {
+    setShowFilters(false);
+  };
+
+  // Convert filterOptions to modal format
+  const toOptions = (items) => items.map((item) => ({ value: item, label: item }));
+
+  const filterSections = useMemo(() => [
+    {
+      key: "courses",
+      title: "Course",
+      options: toOptions(filterOptions.courses),
+    },
+    {
+      key: "batches",
+      title: "Batch",
+      options: toOptions(filterOptions.batches),
+    },
+    {
+      key: "trainers",
+      title: "Trainer",
+      options: toOptions(filterOptions.trainers),
+    },
+    {
+      key: "paymentModes",
+      title: "Payment Mode",
+      options: toOptions(filterOptions.paymentModes),
+    },
+  ], [filterOptions]);
+
   const exportLogs = () => {
     if (!filteredLogs.length) {
-      alert("No rows to export.");
+      Toast.fire({
+        icon: 'info',
+        title: 'No rows to export.'
+      });
       return;
     }
     const headers = [
@@ -323,7 +422,7 @@ export default function PaymentInvoicesMain() {
   const loadAllLeads = async () => {
     setLeadsLoading(true);
     try {
-      const data = await request("/leads");
+      const data = await request("leads");
       const list = Array.isArray(data)
         ? data.map((lead) => ({
             id: lead.lead_id,
@@ -368,10 +467,10 @@ export default function PaymentInvoicesMain() {
     setShareRows([]);
     try {
       const [fee, details, installments, placementInfo] = await Promise.all([
-        request(`/leads/${lead.id}/payment-info`),
-        request(`/leads/${lead.id}`),
-        request(`/leads/${lead.id}/installments`),
-        request(`/leads/${lead.id}/placement-payments`).catch((err) => {
+        request(`leads/${lead.id}/payment-info`),
+        request(`leads/${lead.id}`),
+        request(`leads/${lead.id}/installments`),
+        request(`leads/${lead.id}/placement-payments`).catch((err) => {
           console.error("Failed to load placement payments:", err);
           return null;
         }),
@@ -409,6 +508,16 @@ export default function PaymentInvoicesMain() {
           ? placementInfo.installments
           : []
       );
+
+      // Set initial tab based on card type
+      const cardTypeName = String(mergedDetails.card_type_name || "").toLowerCase();
+      const isPlacementOnly = cardTypeName.includes("placement") && !cardTypeName.includes("training");
+      
+      if (isPlacementOnly) {
+        setFeeTab("placement");
+      } else {
+        setFeeTab("course");
+      }
     } catch (err) {
       console.error("Failed to load lead context:", err);
     }
@@ -442,11 +551,17 @@ export default function PaymentInvoicesMain() {
 
   const recordPayment = async () => {
     if (!selectedLead?.id) {
-      alert("Please choose a student.");
+      Toast.fire({
+        icon: 'warning',
+        title: 'Please choose a student.'
+      });
       return;
     }
     if (!amount || Number(amount) <= 0) {
-      alert("Please enter a valid amount.");
+      Toast.fire({
+        icon: 'warning',
+        title: 'Please enter a valid amount.'
+      });
       return;
     }
     setSaving(true);
@@ -454,8 +569,8 @@ export default function PaymentInvoicesMain() {
     try {
       await request(
         isPlacement
-          ? `/leads/${selectedLead.id}/placement-payments`
-          : `/leads/${selectedLead.id}/installments`,
+          ? `leads/${selectedLead.id}/placement-payments`
+          : `leads/${selectedLead.id}/installments`,
         {
         method: "POST",
         body: JSON.stringify({
@@ -466,11 +581,12 @@ export default function PaymentInvoicesMain() {
         }),
         }
       );
-      alert(
-        isPlacement
+      Toast.fire({
+        icon: 'success',
+        title: isPlacement
           ? "Placement payment recorded successfully."
           : "Course payment recorded successfully."
-      );
+      });
       await Promise.all([selectLead(selectedLead), loadLogs()]);
       setAmount("");
       setMode("");
@@ -479,7 +595,10 @@ export default function PaymentInvoicesMain() {
       setHasRecordedPayment(true);
     } catch (err) {
       console.error("Failed to save payment:", err);
-      alert(err.message || "Failed to save payment.");
+      Toast.fire({
+        icon: 'error',
+        title: err.message || "Failed to save payment."
+      });
     } finally {
       setSaving(false);
     }
@@ -487,7 +606,10 @@ export default function PaymentInvoicesMain() {
   const handleSavePayment = (e) => {
     e.preventDefault();
     if (!hasRecordedPayment) {
-      alert("Please record a payment before saving.");
+      Toast.fire({
+        icon: 'warning',
+        title: 'Please record a payment before saving.'
+      });
       return;
     }
     closeModal();
@@ -556,18 +678,25 @@ export default function PaymentInvoicesMain() {
   };
 
   const renderPlacementFeeContent = () => {
-    const placementFee = Number(leadDetails?.placement_fee || 0);
+    const placementActualFee = Number(leadDetails?.placement_fee || 0);
+    const placementDiscountedFee = Number(leadDetails?.placement_discounted_fee || 0);
     const placementPaid = Number(leadDetails?.placement_paid || 0);
-    const placementBalance = placementFee - placementPaid;
+    // Calculate balance based on discounted fee if available, otherwise use actual fee
+    const feeForBalance = placementDiscountedFee || placementActualFee;
+    const placementBalance = feeForBalance - placementPaid;
     
-    if (!placementFee) {
+    if (!placementActualFee) {
       return <p className="text-muted mb-0">No placement fee has been configured for this lead.</p>;
     }
     
     const leftFields = [
       {
-        label: "Placement Fee:",
-        value: `₹${placementFee.toLocaleString("en-IN")}`,
+        label: "Placement Actual Fee:",
+        value: `₹${placementActualFee.toLocaleString("en-IN")}`,
+      },
+      {
+        label: "Placement Discounted Fee:",
+        value: `₹${placementDiscountedFee.toLocaleString("en-IN")}`,
       },
       {
         label: "Paid So Far:",
@@ -577,6 +706,9 @@ export default function PaymentInvoicesMain() {
           </span>
         ),
       },
+    ];
+
+    const rightFields = [
       {
         label: "Remaining Balance:",
         value: (
@@ -585,9 +717,6 @@ export default function PaymentInvoicesMain() {
           </span>
         ),
       },
-    ];
-
-    const rightFields = [
       {
         label: "Status:",
         value: leadDetails?.placement_paid_status || "—",
@@ -621,7 +750,7 @@ export default function PaymentInvoicesMain() {
   return (
     <div className="bg-slate-50 min-h-screen p-4 md:p-6" style={{ fontFamily: '"Poppins", sans-serif' }}>
       <div className="payment-page max-w-[1500px] mx-auto space-y-6">
-      <div className="payment-header bg-white border border-slate-200 rounded-2xl shadow-sm p-4 md:p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="payment-header bg-white border border-slate-200 rounded-2xl shadow-sm mb-4 p-4 md:p-6 flex flex-col items-start gap-4">
         <div>
           <h4 className="text-xl font-semibold text-slate-900">Payment Records &amp; Invoices</h4>
         </div>
@@ -641,120 +770,17 @@ export default function PaymentInvoicesMain() {
             <div className="col-md-6 actions">
               <button
                 className="btn-filter"
-                onClick={() => setShowFilters(!showFilters)}
+                onClick={() => setShowFilters(true)}
                 type="button"
-                title="Toggle Filters"
+                title="Open Filters"
               >
-                <BiFilterAlt /> {showFilters ? "Hide Filters" : "Show Filters"}
+                <BiFilterAlt /> Filters
               </button>
               <button className="btn-export" onClick={exportLogs} type="button">
                 <BsDownload /> Export to Excel
               </button>
-              <button
-                className="btn-refresh"
-                onClick={loadLogs}
-                disabled={logsLoading}
-                type="button"
-              >
-                <BsArrowClockwise /> Refresh
-              </button>
             </div>
           </div>
-          
-          {/* Filter Section */}
-          {showFilters && (
-            <div className="filter-section mb-3">
-              <div className="filter-row">
-                <div className="filter-field">
-                  <label className="filter-label">Course</label>
-                  <select
-                    className="form-control form-control-sm"
-                    value={filters.course}
-                    onChange={(e) => handleFilterChange("course", e.target.value)}
-                  >
-                    <option value="">All Courses</option>
-                    {filterOptions.courses.map((course) => (
-                      <option key={course} value={course}>
-                        {course}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="filter-field">
-                  <label className="filter-label">Batch</label>
-                  <select
-                    className="form-control form-control-sm"
-                    value={filters.batch}
-                    onChange={(e) => handleFilterChange("batch", e.target.value)}
-                  >
-                    <option value="">All Batches</option>
-                    {filterOptions.batches.map((batch) => (
-                      <option key={batch} value={batch}>
-                        {batch}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="filter-field">
-                  <label className="filter-label">Trainer</label>
-                  <select
-                    className="form-control form-control-sm"
-                    value={filters.trainer}
-                    onChange={(e) => handleFilterChange("trainer", e.target.value)}
-                  >
-                    <option value="">All Trainers</option>
-                    {filterOptions.trainers.map((trainer) => (
-                      <option key={trainer} value={trainer}>
-                        {trainer}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="filter-field">
-                  <label className="filter-label">Payment Mode</label>
-                  <select
-                    className="form-control form-control-sm"
-                    value={filters.paymentMode}
-                    onChange={(e) => handleFilterChange("paymentMode", e.target.value)}
-                  >
-                    <option value="">All Modes</option>
-                    {filterOptions.paymentModes.map((mode) => (
-                      <option key={mode} value={mode}>
-                        {mode}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="filter-field">
-                  <label className="filter-label">Date From</label>
-                  <input
-                    type="date"
-                    className="form-control form-control-sm"
-                    value={filters.dateFrom}
-                    onChange={(e) => handleFilterChange("dateFrom", e.target.value)}
-                  />
-                </div>
-                <div className="filter-field">
-                  <label className="filter-label">Date To</label>
-                  <input
-                    type="date"
-                    className="form-control form-control-sm"
-                    value={filters.dateTo}
-                    onChange={(e) => handleFilterChange("dateTo", e.target.value)}
-                  />
-                </div>
-                <div className="filter-field filter-button-field">
-                  <button
-                    className="btn btn-sm btn-secondary"
-                    onClick={resetFilters}
-                    type="button"
-                  >
-                    Reset Filters
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
           
           <div className="search-row">
           <input
@@ -845,7 +871,7 @@ export default function PaymentInvoicesMain() {
         </div>
       </div>
 
-      {modalOpen && (
+      {modalOpen && typeof document !== 'undefined' && createPortal(
         <div className="payment-overlay">
           <div className="payment-modal">
             <header style={{ background: `linear-gradient(90deg, ${colors.primary}, ${colors.primaryDark})` }}>
@@ -998,26 +1024,38 @@ export default function PaymentInvoicesMain() {
               )}
 
               {/* Fee Tabs */}
-              <div className="info-card tab-switcher tab-switcher-card">
-                <div className="tab-group">
-                  <button
-                    type="button"
-                    className={`tab-btn ${feeTab === "course" ? "active" : ""}`}
-                    onClick={() => setFeeTab("course")}
-                    disabled={!selectedLead}
-                  >
-                    Course Fees
-                  </button>
-                  <button
-                    type="button"
-                    className={`tab-btn ${feeTab === "placement" ? "active" : ""}`}
-                    onClick={() => setFeeTab("placement")}
-                    disabled={!selectedLead}
-                  >
-                    Placement Fees
-                  </button>
-                </div>
-              </div>
+              {selectedLead && (() => {
+                const cardTypeName = String(leadDetails?.card_type_name || "").toLowerCase();
+                const showTraining = !leadDetails?.card_type_id || cardTypeName.includes("training");
+                const showPlacement = !leadDetails?.card_type_id || cardTypeName.includes("placement");
+
+                if (!showTraining && !showPlacement) return null;
+
+                return (
+                  <div className="info-card tab-switcher tab-switcher-card">
+                    <div className="tab-group">
+                      {showTraining && (
+                        <button
+                          type="button"
+                          className={`tab-btn ${feeTab === "course" ? "active" : ""}`}
+                          onClick={() => setFeeTab("course")}
+                        >
+                          Course Fees
+                        </button>
+                      )}
+                      {showPlacement && (
+                        <button
+                          type="button"
+                          className={`tab-btn ${feeTab === "placement" ? "active" : ""}`}
+                          onClick={() => setFeeTab("placement")}
+                        >
+                          Placement Fees
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Fee Summary */}
               <div id="feeInfoBox" className="info-card fee-summary">
@@ -1229,8 +1267,26 @@ export default function PaymentInvoicesMain() {
 
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
+
+      {/* Payment Filter Modal with Date Range */}
+      <PaymentFilterModal
+        isOpen={showFilters}
+        onClose={() => setShowFilters(false)}
+        title="Payment Filters"
+        sections={filterSections}
+        selected={filters}
+        onToggle={handleToggleFilter}
+        onClear={handleClearFilters}
+        onApply={handleApplyFilters}
+        onCancel={() => setShowFilters(false)}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateFromChange={setDateFrom}
+        onDateToChange={setDateTo}
+      />
     </div>
     </div>
   );

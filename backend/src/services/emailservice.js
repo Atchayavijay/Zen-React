@@ -3,7 +3,7 @@ const fetch = require("node-fetch");
 const pool = require("../config/db");
 const { Parser } = require("json2csv");
 // Admin email address
-const adminEmail = "admin@urbancode.in";
+const adminEmail = "admi@urbancode.in";
 
 const isValidLead = (lead, fields = ["email", "name", "course_name"]) => {
   return fields.every((field) => lead?.[field]);
@@ -58,18 +58,18 @@ const createEmailTemplate = (headerText, content) => `
           text-align: center;
         }
         .header-logo-background {
-          background-color: #ffffff;
-          padding: 10px;
-          width: 100%;
+          background-color: #E5E7EB !important;
+          padding: 15px 20px;
+          width: fit-content;
+          max-width: 200px;
+          margin: 0 auto 15px auto;
           display: flex;
           justify-content: center;
-          border-top-left-radius: 8px;
-          border-bottom-left-radius: 8px;
-          border-top-right-radius: 0px;
-          border-bottom-right-radius: 0px;
-          margin-bottom: 10px; /* Adds vertical space between logo and h1 */
+          align-items: center;
+          border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-        .header img { max-width: 150px; }
+        .header img { max-width: 150px; height: auto; display: block; }
         .header h1 {
           margin: 0;
           padding: 10px 0; /* Adjust top and bottom padding for spacing */
@@ -110,8 +110,9 @@ const createEmailTemplate = (headerText, content) => `
         <table class="email-body" cellpadding="0" cellspacing="0" width="100%">
           <tr>
             <td class="header">
-              <div class="header-logo-background">
-                <img src="https://urbancode.in/images/logo.png" alt="Urbancode Logo" />
+              <div class="header-logo-background ">
+                <img src="https://www.urbancode.in/images/home/logo.png" alt="Urbancode Logo" />
+                
               </div>
               <h1>${headerText}</h1>
             </td>
@@ -159,7 +160,7 @@ async function sendWelcomeEmail(lead) {
   if (!isValidLead(lead)) {
     console.warn("⚠️ Skipping welcome email: lead data incomplete", lead);
     return;
-  } 
+  }
   const leadContent = `
     <tr>
       <td class="content">
@@ -542,9 +543,8 @@ const sendTrainerPayoutSummaryEmails = async (period, customDateFrom = null, cus
       // Send email with CSV from memory
       await sendEmail({
         to: email,
-        subject: `Trainer Payout Summary - ${
-          period === "custom" ? customDate : period
-        }`,
+        subject: `Trainer Payout Summary - ${period === "custom" ? customDate : period
+          }`,
         message: createEmailTemplate("Trainer Payout Summary", html),
         attachments: [
           {

@@ -58,6 +58,7 @@ exports.addLead = async (req, res) => {
       discounted_fee,
       fee_paid,
       placement_fee,
+      placement_discounted_fee,
       placement_paid,
       status,
       paid_status,
@@ -195,14 +196,20 @@ exports.addLead = async (req, res) => {
     // Fix placement fee parsing - handle numeric strings properly
     const f_placement_fee =
       placement_fee &&
-      placement_fee.toString().trim() !== "" &&
-      !isNaN(parseFloat(placement_fee))
+        placement_fee.toString().trim() !== "" &&
+        !isNaN(parseFloat(placement_fee))
         ? parseFloat(placement_fee)
+        : null;
+    const f_placement_discounted_fee =
+      placement_discounted_fee &&
+        placement_discounted_fee.toString().trim() !== "" &&
+        !isNaN(parseFloat(placement_discounted_fee))
+        ? parseFloat(placement_discounted_fee)
         : null;
     const f_placement_paid =
       placement_paid &&
-      placement_paid.toString().trim() !== "" &&
-      !isNaN(parseFloat(placement_paid))
+        placement_paid.toString().trim() !== "" &&
+        !isNaN(parseFloat(placement_paid))
         ? parseFloat(placement_paid)
         : null;
 
@@ -213,6 +220,7 @@ exports.addLead = async (req, res) => {
         discounted_fee,
         fee_paid,
         placement_fee,
+        placement_discounted_fee,
         placement_paid,
         trainer_id,
         placement_fee_type: typeof placement_fee,
@@ -225,6 +233,7 @@ exports.addLead = async (req, res) => {
         f_discounted_fee,
         f_fee_paid,
         f_placement_fee,
+        f_placement_discounted_fee,
         f_placement_paid,
         formatted_trainer_id,
       },
@@ -235,20 +244,15 @@ exports.addLead = async (req, res) => {
         ? Math.max(0, f_discounted_fee - f_fee_paid)
         : null;
 
-    const placement_balance =
-      f_placement_fee !== null && f_placement_paid !== null
-        ? Math.max(0, f_placement_fee - f_placement_paid)
-        : null;
-
-    // Placement Paid Status logic
+    // Placement Paid Status logic - based on discounted fee
     if (!placement_paid_status) {
-      if (f_placement_fee === null || f_placement_fee === 0) {
+      if (f_placement_discounted_fee === null || f_placement_discounted_fee === 0) {
         placement_paid_status = "not paid";
       } else if (f_placement_paid === null || f_placement_paid <= 0) {
         placement_paid_status = "not paid";
-      } else if (f_placement_paid > 0 && f_placement_paid < f_placement_fee) {
+      } else if (f_placement_paid > 0 && f_placement_paid < f_placement_discounted_fee) {
         placement_paid_status = "partially paid";
-      } else if (f_placement_paid >= f_placement_fee) {
+      } else if (f_placement_paid >= f_placement_discounted_fee) {
         placement_paid_status = "paid";
       } else {
         placement_paid_status = "not paid";
@@ -303,7 +307,7 @@ exports.addLead = async (req, res) => {
           referred_by,
           course_id, batch_id, trainer_id,
           actual_fee, discounted_fee, fee_paid, fee_balance,
-          placement_fee, placement_paid, placement_paid_status,
+          placement_fee, placement_discounted_fee, placement_paid, placement_paid_status,
           status, paid_status, user_id,
           unit_id, card_type_id, enrollment_id, created_at,
           meta_campaign_id,
@@ -311,10 +315,10 @@ exports.addLead = async (req, res) => {
           course_structure
         ) VALUES (
           $1,$2,$3,$4,$5,$6,$7,$8,$9,
-          $10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,
-          $22,$23,$24,$25,$26,$27,
+          $10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,
+          $23,$24,$25,$26,$27,
           $28,$29,$30,$31,$32,$33,$34,$35,
-          $36
+          $36,$37
         ) RETURNING *`,
         [
           name,
@@ -334,6 +338,7 @@ exports.addLead = async (req, res) => {
           f_fee_paid,
           fee_balance,
           f_placement_fee,
+          f_placement_discounted_fee,
           f_placement_paid,
           placement_paid_status,
           status,
@@ -439,7 +444,7 @@ exports.addLead = async (req, res) => {
   } catch (err) {
     console.error("Error adding lead:", err);
     console.error("Error stack:", err.stack);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: err.message || "Failed to add lead",
       details: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
@@ -467,7 +472,10 @@ exports.updateLead = async (req, res) => {
       discounted_fee,
       fee_paid,
       placement_fee,
+      placement_discounted_fee,
       placement_paid,
+      placement_balance,
+
       status,
       paid_status,
       placement_paid_status,
@@ -587,14 +595,20 @@ exports.updateLead = async (req, res) => {
     // Fix placement fee parsing - handle numeric strings properly (same as addLead)
     const f_placement_fee =
       placement_fee &&
-      placement_fee.toString().trim() !== "" &&
-      !isNaN(parseFloat(placement_fee))
+        placement_fee.toString().trim() !== "" &&
+        !isNaN(parseFloat(placement_fee))
         ? parseFloat(placement_fee)
+        : null;
+    const f_placement_discounted_fee =
+      placement_discounted_fee &&
+        placement_discounted_fee.toString().trim() !== "" &&
+        !isNaN(parseFloat(placement_discounted_fee))
+        ? parseFloat(placement_discounted_fee)
         : null;
     const f_placement_paid =
       placement_paid &&
-      placement_paid.toString().trim() !== "" &&
-      !isNaN(parseFloat(placement_paid))
+        placement_paid.toString().trim() !== "" &&
+        !isNaN(parseFloat(placement_paid))
         ? parseFloat(placement_paid)
         : null;
 
@@ -610,15 +624,15 @@ exports.updateLead = async (req, res) => {
       else paid_status = "partially paid";
     }
 
-    // Placement Paid Status logic
+    // Placement Paid Status logic - based on discounted fee
     if (!placement_paid_status) {
-      if (f_placement_fee === null || f_placement_fee === 0) {
+      if (f_placement_discounted_fee === null || f_placement_discounted_fee === 0) {
         placement_paid_status = "not paid";
       } else if (f_placement_paid === null || f_placement_paid <= 0) {
         placement_paid_status = "not paid";
-      } else if (f_placement_paid > 0 && f_placement_paid < f_placement_fee) {
+      } else if (f_placement_paid > 0 && f_placement_paid < f_placement_discounted_fee) {
         placement_paid_status = "partially paid";
-      } else if (f_placement_paid >= f_placement_fee) {
+      } else if (f_placement_paid >= f_placement_discounted_fee) {
         placement_paid_status = "paid";
       } else {
         placement_paid_status = "not paid";
@@ -644,6 +658,7 @@ exports.updateLead = async (req, res) => {
       fee_paid: f_fee_paid,
       fee_balance,
       placement_fee: f_placement_fee,
+      placement_discounted_fee: f_placement_discounted_fee,
       placement_paid: f_placement_paid,
       placement_paid_status,
       status,
@@ -737,19 +752,26 @@ exports.updateLead = async (req, res) => {
           status
         );
       }
-      // 10) Send enrollment email if applicable
-      const excluded = ["enquiry", "prospect", "onhold", "archived"];
-      if (!excluded.includes(status.toLowerCase())) {
+      // 10) Generate enrollment ID if status reaches Enrollment and doesn't have one yet
+      const enrollmentStatuses = ["enrollment", "completed", "placed"];
+      const shouldHaveEnrollmentId = enrollmentStatuses.includes(status.toLowerCase());
+
+      if (shouldHaveEnrollmentId && !updatedLead.enrollment_id) {
         const courseRes = await client.query(
           "SELECT course_name FROM course WHERE course_id = $1",
           [course_id]
         );
         const course_name = courseRes.rows[0]?.course_name || "your course";
         const enrollment_id = generateEnrollmentID();
+
         await client.query(
           "UPDATE leads SET enrollment_id = $1 WHERE lead_id = $2",
           [enrollment_id, id]
         );
+
+        // Update the returned object with the new enrollment_id
+        updatedLead.enrollment_id = enrollment_id;
+
         await sendEnrollmentEmail({
           name,
           email,
@@ -796,7 +818,6 @@ exports.getLeads = async (req, res) => {
     SELECT
       leads.*,
       (leads.discounted_fee - leads.fee_paid) AS fee_balance,
-      (leads.placement_fee - leads.placement_paid) AS placement_balance,
       roles.name AS role,
       sources.name AS source,
       batch.batch_name,
@@ -1105,7 +1126,6 @@ exports.getLeadById = async (req, res) => {
       SELECT
         leads.*,
         (leads.discounted_fee - leads.fee_paid) AS fee_balance,
-        (leads.placement_fee - leads.placement_paid) AS placement_balance,
         roles.name AS role,
         sources.name AS source,
         batch.batch_name,

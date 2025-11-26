@@ -1,6 +1,5 @@
 const { v4: uuidv4 } = require("uuid");
 const pool = require("../../config/db");
-
 // Create New Assignee
 
 exports.createAssignee = async (req, res) => {

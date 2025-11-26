@@ -44,6 +44,9 @@ const lookupService = {
       const trainers = trainersArr.map((t, i) => ({
         id: t.id || t.trainer_id || i,
         name: t.name || t.trainer_name || t.full_name || t.user_name || t.id || i,
+        email: t.trainer_email || t.email || '',
+        mobile: t.trainer_mobile || t.mobile || t.phone || '',
+        _raw: t, // Preserve full trainer object
       }))
       return { success: true, data: trainers }
     } catch (error) {
@@ -68,7 +71,13 @@ const lookupService = {
         const id = a.user_id || a.id || a.assignee_id || a.userId || a._id || i
         const name =
           a.username || a.user_name || a.assignee_name || a.name || a.full_name || a.email || String(id)
-        return { id, name }
+        return {
+          id,
+          name,
+          email: a.email || a.user_email || a.assignee_email || '',
+          mobile: a.mobile || a.user_mobile || a.assignee_mobile || a.phone || '',
+          _raw: a,
+        }
       })
       return { success: true, data: assignees }
     } catch (error) {
@@ -84,6 +93,9 @@ const lookupService = {
       const users = (res.data || []).map((u, i) => ({
         id: u.id || u.user_id || i,
         name: u.username || u.name || u.email || u.id || i,
+        email: u.email || u.user_email || '',
+        mobile: u.mobile || u.user_mobile || u.phone || '',
+        _raw: u,
       }))
       return { success: true, data: users }
     } catch (error) {
