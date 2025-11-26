@@ -1,220 +1,100 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { API_BASE_URL } from '@shared/api/client'
+import React, { useEffect, useState } from "react";
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import { Bar } from 'react-chartjs-2';
+import apiClient from '@shared/api/client';
+import { endpoints } from '@shared/api/endpoints';
+import { FiFilter, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 
-/* === helpers for demo rows === */
-const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-const names = [
-  "Johnson",
-  "Chandru",
-  "Jayalakshmi",
-  "Clement Fabian",
-  "Arun",
-  "Sangitha",
-  "Abinaya",
-  "Vinetha",
-  "Mylesh",
-  "Santhosh April",
-  "Dhanush",
-  "Shankar",
-  "Lakshmi",
-  "Kalai Selvi",
-  "Azhar",
-  "Karthik",
-  "Nila",
-  "Harini",
-  "Aravind",
-  "Meena",
-  "Vijay",
-  "Kaviya",
-  "Sowmiya",
-  "Bhuvan",
-  "Nandha",
-  "Priya",
-];
-const stages = [
-  "trainingprogress",
-  "liveinterviews",
-  "mockinterviews",
-  "handsonproject",
-  "placement",
-];
-const paidStatuses = ["paid", "unpaid", "partially paid"];
+// Register Chart.js components
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+
+const COLORS = { 
+  paid: "#28a745", 
+  unpaid: "#dc3545", 
+  partial: "#ffc107" 
+};
+
+const STATUS_ORDER = { 
+  paid: 0, 
+  "partially paid": 1, 
+  unpaid: 2,
+  "not paid": 2 
+};
+
+const norm = (s) => (s || "").toLowerCase().trim();
 
 function moneyIN(n) {
+  if (!n && n !== 0) return "₹0";
   return "₹" + Number(n).toLocaleString("en-IN");
 }
 
-function generateDummyPayments(n = 150) {
-  const rows = [];
-  for (let i = 0; i < n; i++) {
-    const id = rand(50, 9999);
-    const name = names[rand(0, names.length - 1)];
-    const actual = rand(12000, 200000);
-    const discounted = Math.max(10000, actual - rand(1000, 25000));
-    const paidStatus = paidStatuses[rand(0, paidStatuses.length - 1)];
-    const paid =
-      paidStatus === "paid"
-        ? discounted
-        : paidStatus === "partially paid"
-        ? rand(Math.round(discounted * 0.1), Math.round(discounted * 0.8))
-        : 0;
-    rows.push({
-      lead_id: id,
-      name,
-      formatted_actual_fee: moneyIN(actual),
-      formatted_discounted_fee: moneyIN(discounted),
-      formatted_fee_paid: moneyIN(paid),
-      status: stages[rand(0, stages.length - 1)],
-      paid_status: paidStatus,
-      created_at: new Date(Date.now() - rand(0, 90) * 86400000).toISOString(),
-    });
-  }
-  return rows;
-}
-
-const COLORS = { paid: "#28a745", unpaid: "#dc3545", partial: "#ffc107" };
-const STATUS_ORDER = { paid: 0, "partially paid": 1, unpaid: 2 };
-const norm = (s) => (s || "").toLowerCase().trim();
-
-/* === nicer axis step for the chart === */
-function niceStep(max) {
-  if (max <= 10) return 2;
-  if (max <= 20) return 5;
-  if (max <= 60) return 10;
-  if (max <= 120) return 20;
-  if (max <= 200) return 25;
-  return 50;
-}
-
-/* === tiny bar card (no library) === */
-function BarCard({ paid, unpaid, partial }) {
-  const values = [paid, unpaid, partial];
-  const labels = ["Paid", "Unpaid", "Partially Paid"];
-  const fills = [COLORS.paid, COLORS.unpaid, COLORS.partial];
-
-  const max = Math.max(...values, 1);
-  const step = niceStep(max);
-  const top = Math.ceil(max / step) * step;
-  const ticks = [];
-  for (let y = step; y <= top; y += step) ticks.push(y);
-
-  return (
-    <div className="w-[360px] bg-white border rounded-lg shadow px-4 py-4">
-      <div className="relative h-[520px]">
-        <div className="absolute left-0 top-0 bottom-12 w-10">
-          <div className="relative h-full">
-            {ticks.map((t) => {
-              const pct = 100 - (t / top) * 100;
-              return (
-                <div
-                  key={t}
-                  className="absolute left-0 -translate-y-1/2 text-[11px] text-gray-500"
-                  style={{ top: `${pct}%` }}
-                >
-                  {t}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        <div className="absolute left-10 right-2 top-0 bottom-12">
-          {ticks.map((t) => {
-            const pct = 100 - (t / top) * 100;
-            return (
-              <div
-                key={t}
-                className="absolute left-0 right-0 border-t border-gray-200"
-                style={{ top: `${pct}%` }}
-              />
-            );
-          })}
-          <div className="absolute inset-0 flex items-end justify-around">
-            {values.map((v, i) => {
-              const hPct = (v / top) * 100;
-              return (
-                <div key={i} className="relative flex flex-col items-center">
-                  <div className="absolute -top-6 text-[12px] font-semibold">
-                    {v}
-                  </div>
-                  <div
-                    className="w-24 rounded-t-md transition-all"
-                    style={{ height: `${hPct}%`, background: fills[i] }}
-                    aria-label={`${labels[i]}: ${v}`}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        <div className="absolute left-10 right-2 bottom-0 h-12 flex items-end justify-around">
-          {labels.map((l) => (
-            <div
-              key={l}
-              className="text-[11px] text-gray-500 text-center w-24 pb-1"
-            >
-              {l}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function PaymentInsightsMain() {
-  const token = useMemo(() => localStorage.getItem("token"), []);
-  const authHeader = useMemo(
-    () => ({ Authorization: `Bearer ${token}` }),
-    [token]
-  );
-
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [status, setStatus] = useState("all");
-
+  const [showFilters, setShowFilters] = useState(true);
+  
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState([]);
   const [counts, setCounts] = useState({ paid: 0, unpaid: 0, partial: 0 });
-
-  /* 👉 set to true to always show dummy rows */
-  const USE_DUMMY = true;
+  const [summaryData, setSummaryData] = useState({
+    paid: { count: 0, total: 0 },
+    unpaid: { count: 0, total: 0 },
+    partial: { count: 0, paid: 0, remaining: 0 }
+  });
 
   async function loadData(f = "", t = "", s = "all") {
     setLoading(true);
     try {
-      let src = [];
+      const qs = new URLSearchParams();
+      if (f) qs.append("fromDate", f);
+      if (t) qs.append("toDate", t);
+      
+      const res = await apiClient.get(`${endpoints.leads.root}?${qs.toString()}`);
+      let src = Array.isArray(res.data) ? res.data : [];
 
-      if (USE_DUMMY) {
-        src = generateDummyPayments(150);
-      } else {
-        const qs = new URLSearchParams();
-        if (f) qs.append("fromDate", f);
-        if (t) qs.append("toDate", t);
-        const res = await fetch(
-          `${API_BASE_URL}/payments?${qs.toString()}`, // Fixed: removed duplicate /api
-          {
-            headers: authHeader,
+      // 1. Auto-correct status based on actual amounts
+      src = src.map(p => {
+        const feePaid = parseFloat(p.fee_paid) || 0;
+        const discountedFee = parseFloat(p.discounted_fee) || 0;
+        
+        let correctedStatus = p.paid_status;
+
+        // Logic: Trust the money, not the label
+        if (discountedFee > 0) {
+          if (feePaid >= discountedFee) {
+            correctedStatus = 'paid';
+          } else if (feePaid > 0) {
+            correctedStatus = 'partially paid';
+          } else {
+            correctedStatus = 'unpaid';
           }
-        );
-        const data = await res.json();
-        src = Array.isArray(data?.payments) ? data.payments : [];
-      }
+        } else if (discountedFee === 0 && p.paid_status) {
+             // If fee is 0, keep existing status or default to paid? 
+             // Usually 0 fee means free/paid, but let's leave it unless it's explicitly 'unpaid' with 0 balance
+             if(norm(p.paid_status) === 'unpaid' || norm(p.paid_status) === 'not paid') {
+                 correctedStatus = 'paid'; 
+             }
+        }
 
-      // date filter (if you're not using server filtering)
+        return { ...p, paid_status: correctedStatus };
+      });
+
+      // Filter by date range
       const byDate = src.filter((p) => {
+        if (!p.created_at) return true;
         const created = new Date(p.created_at);
         const from = f ? new Date(f) : null;
         const to = t ? new Date(`${t}T23:59:59`) : null;
         return (!from || created >= from) && (!to || created <= to);
       });
 
-      // status filter for table
-      const byStatus =
-        s === "all"
-          ? byDate
-          : byDate.filter((p) => norm(p.paid_status) === norm(s));
+      // Filter by status for table
+      const byStatus = s === "all" 
+        ? byDate 
+        : byDate.filter((p) => norm(p.paid_status) === norm(s));
 
-      // sorting like original
+      // Sort by paid status
       byStatus.sort((a, b) => {
         const as = STATUS_ORDER[norm(a.paid_status)] ?? 99;
         const bs = STATUS_ORDER[norm(b.paid_status)] ?? 99;
@@ -223,20 +103,39 @@ export default function PaymentInsightsMain() {
 
       setRows(byStatus);
 
-      // counts for chart from date-filtered set
-      let paid = 0,
-        unpaid = 0,
-        partial = 0;
-      byDate.forEach((p) => {
+      // Calculate counts and summaries
+      let paid = 0, unpaid = 0, partial = 0;
+      let paidTotal = 0, unpaidTotal = 0, partialPaid = 0, partialRemaining = 0;
+
+      // Use byStatus instead of byDate to respect the status filter in charts/summaries
+      byStatus.forEach((p) => {
         const ps = norm(p.paid_status);
-        if (ps === "paid") paid++;
-        else if (ps === "partially paid") partial++;
-        else if (ps === "unpaid" || ps === "not paid") unpaid++;
+        const feePaid = parseFloat(p.fee_paid) || 0;
+        const discountedFee = parseFloat(p.discounted_fee) || 0;
+        
+        if (ps === "paid") {
+          paid++;
+          paidTotal += feePaid;
+        } else if (ps === "partially paid") {
+          partial++;
+          partialPaid += feePaid;
+          partialRemaining += (discountedFee - feePaid);
+        } else {
+          // unpaid or not paid
+          unpaid++;
+          unpaidTotal += discountedFee;
+        }
       });
+
       setCounts({ paid, unpaid, partial });
+      setSummaryData({
+        paid: { count: paid, total: paidTotal },
+        unpaid: { count: unpaid, total: unpaidTotal },
+        partial: { count: partial, paid: partialPaid, remaining: partialRemaining }
+      });
     } catch (e) {
-      console.error(e);
-      setRows(generateDummyPayments(150)); // fallback to demo
+      console.error("Error loading payment insights:", e);
+      setRows([]);
     } finally {
       setLoading(false);
     }
@@ -246,7 +145,11 @@ export default function PaymentInsightsMain() {
     loadData("", "", "all");
   }, []);
 
-  const apply = () => loadData(fromDate, toDate, status);
+  const apply = () => {
+    loadData(fromDate, toDate, status);
+    setShowFilters(false); // Auto-collapse after apply
+  };
+  
   const reset = () => {
     setFromDate("");
     setToDate("");
@@ -254,168 +157,254 @@ export default function PaymentInsightsMain() {
     loadData("", "", "all");
   };
 
-  return (
-    <div className="p-4">
-      <div className="w-full grid grid-cols-[360px_1fr_320px] gap-6">
-        {/* CHART */}
-        <BarCard
-          paid={counts.paid}
-          unpaid={counts.unpaid}
-          partial={counts.partial}
-        />
+  // Chart data
+  const chartData = {
+    labels: ['Paid', 'Unpaid', 'Partially Paid'],
+    datasets: [{
+      label: 'Number of Students',
+      data: [counts.paid, counts.unpaid, counts.partial],
+      backgroundColor: [COLORS.paid, COLORS.unpaid, COLORS.partial],
+      borderColor: [COLORS.paid, COLORS.unpaid, COLORS.partial],
+      borderWidth: 1
+    }]
+  };
 
-        {/* TABLE CARD — only Y scroll, full grid lines */}
-        <div className="bg-white border rounded-lg shadow overflow-hidden">
-          <div className="px-5 py-3 border-b">
-            <h3 className="text-lg font-semibold text-center">
-              Payment Insights
-            </h3>
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false
+      },
+      title: {
+        display: true,
+        text: 'Payment Status',
+        font: { size: 14, weight: 'bold' }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          stepSize: 1,
+          precision: 0
+        }
+      }
+    }
+  };
+
+  const renderSummaryCard = () => {
+    if (status === "paid") {
+      return (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+          <h5 className="text-base font-semibold text-green-800 mb-2">Paid Students Summary</h5>
+          <div className="grid grid-cols-2 gap-3 text-center">
+            <div>
+              <p className="text-xs text-gray-600">Total Paid</p>
+              <p className="text-xl font-bold text-green-700">{summaryData.paid.count}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-600">Total Amount</p>
+              <p className="text-xl font-bold text-green-700">{moneyIN(summaryData.paid.total)}</p>
+            </div>
           </div>
+        </div>
+      );
+    }
 
-          <div className="max-h-[74vh] overflow-y-auto overflow-x-hidden">
-            <table className="w-full table-fixed border-separate border-spacing-0 text-sm">
-              <colgroup>
-                <col style={{ width: "10%" }} /> {/* ID */}
-                <col style={{ width: "22%" }} /> {/* Name */}
-                <col style={{ width: "12%" }} /> {/* Actual */}
-                <col style={{ width: "14%" }} /> {/* Discounted */}
-                <col style={{ width: "10%" }} /> {/* Paid */}
-                <col style={{ width: "18%" }} /> {/* Status (wider) */}
-                <col style={{ width: "16%" }} /> {/* Paid Status (wider) */}
-              </colgroup>
-              <thead className="sticky top-0 z-10">
-                <tr className="bg-gray-100 text-gray-700">
-                  {[
-                    "ID",
-                    "Name",
-                    "Actual",
-                    "Discounted",
-                    "Paid",
-                    "Status",
-                    "Paid Status",
-                  ].map((h) => (
-                    <th
-                      key={h}
-                      className="px-4 py-3 text-left font-semibold
-                                 border-b border-r border-gray-200 first:border-l last:border-r-0"
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
+    if (status === "unpaid") {
+      return (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+          <h5 className="text-base font-semibold text-red-800 mb-2">Unpaid Students</h5>
+          <div className="grid grid-cols-2 gap-3 text-center">
+            <div>
+              <p className="text-xs text-gray-600">Total Unpaid</p>
+              <p className="text-xl font-bold text-red-700">{summaryData.unpaid.count}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-600">Amount Due</p>
+              <p className="text-xl font-bold text-red-700">{moneyIN(summaryData.unpaid.total)}</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
 
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td
-                      colSpan={7}
-                      className="px-4 py-6 text-center text-gray-500"
-                    >
-                      Loading…
-                    </td>
-                  </tr>
-                ) : rows.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={7}
-                      className="px-4 py-6 text-center text-gray-500"
-                    >
-                      No records
-                    </td>
-                  </tr>
-                ) : (
-                  // FIXED: Properly formatted table rows
-                  rows.map((p, idx) => (
-                    <tr key={`${p.lead_id}-${idx}`} className="bg-white hover:bg-gray-50">
-                      <td className="px-4 py-3 border-b border-r border-gray-200 first:border-l">
-                        {p.lead_id}
-                      </td>
-                      <td className="px-4 py-3 border-b border-r border-gray-200">
-                        {p.name}
-                      </td>
-                      <td className="px-4 py-3 border-b border-r border-gray-200">
-                        {p.formatted_actual_fee}
-                      </td>
-                      <td className="px-4 py-3 border-b border-r border-gray-200">
-                        {p.formatted_discounted_fee}
-                      </td>
-                      <td className="px-4 py-3 border-b border-r border-gray-200">
-                        {p.formatted_fee_paid}
-                      </td>
-                      <td className="px-4 py-3 border-b border-r border-gray-200">
-                        <span className="inline-block px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 capitalize">
-                          {p.status.replace(/([a-z])([A-Z])/g, '$1 $2')}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 border-b border-gray-200 last:border-r-0">
-                        <span className={`inline-block px-2 py-1 text-xs rounded-full font-medium capitalize ${
-                          p.paid_status?.toLowerCase() === 'paid' 
-                            ? 'bg-green-100 text-green-800'
-                            : p.paid_status?.toLowerCase() === 'partially paid'
-                            ? 'bg-yellow-100 text-yellow-800'  
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {p.paid_status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+    if (status === "partially paid") {
+      return (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+          <h5 className="text-base font-semibold text-yellow-800 mb-2">Partial Payments</h5>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div>
+              <p className="text-xs text-gray-600">Students</p>
+              <p className="text-lg font-bold text-yellow-700">{summaryData.partial.count}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-600">Paid</p>
+              <p className="text-lg font-bold text-yellow-700">{moneyIN(summaryData.partial.paid)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-600">Due</p>
+              <p className="text-lg font-bold text-yellow-700">{moneyIN(summaryData.partial.remaining)}</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  return (
+    <div className="h-screen flex flex-col bg-gray-50">
+      {/* HEADER with Collapsible Filters */}
+      <div className="bg-white border-b shadow-sm">
+        <div className="px-6 py-3 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800">Payment Insights</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Track student payment statuses</p>
+          </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm"
+          >
+            <FiFilter size={16} />
+            <span>{showFilters ? 'Hide' : 'Show'} Filters</span>
+            {showFilters ? <FiChevronUp size={16} /> : <FiChevronDown size={16} />}
+          </button>
+        </div>
+
+        {/* Collapsible Filter Bar */}
+        {showFilters && (
+          <div className="px-6 py-3 bg-gray-50 border-t">
+            <div className="flex items-end gap-3">
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                  From Date
+                </label>
+                <input
+                  type="date"
+                  className="w-full border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                  To Date
+                </label>
+                <input
+                  type="date"
+                  className="w-full border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                  Payment Status
+                </label>
+                <select
+                  className="w-full border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white"
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                >
+                  <option value="all">All</option>
+                  <option value="paid">Paid</option>
+                  <option value="unpaid">Unpaid</option>
+                  <option value="partially paid">Partially Paid</option>
+                </select>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={apply}
+                  className="px-5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md font-medium text-sm transition-colors shadow-sm"
+                >
+                  Apply
+                </button>
+                <button
+                  onClick={reset}
+                  className="px-5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-md font-medium text-sm transition-colors shadow-sm"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* MAIN CONTENT AREA */}
+      <div className="flex-1 overflow-hidden p-6 flex gap-6">
+        {/* LEFT: Chart */}
+        <div className="w-80 bg-white border rounded-lg shadow-sm p-4 flex-shrink-0">
+          <div style={{ height: '500px' }}>
+            <Bar data={chartData} options={chartOptions} />
           </div>
         </div>
 
-        {/* FILTERS */}
-        <div className="bg-white border rounded-lg shadow p-4 h-fit">
-          <h4 className="text-sm font-semibold text-gray-700 mb-4">Filters</h4>
-          <div className="mb-4">
-            <label className="block text-xs text-gray-500 mb-1">
-              From Date:
-            </label>
-            <input
-              type="date"
-              className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-            />
-          </div>
-          <div className="mb-4">
-            <label className="block text-xs text-gray-500 mb-1">To Date:</label>
-            <input
-              type="date"
-              className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-            />
-          </div>
-          <div className="mb-4">
-            <label className="block text-xs text-gray-500 mb-1">Status:</label>
-            <select
-              className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-            >
-              <option value="all">All</option>
-              <option value="paid">Paid</option>
-              <option value="unpaid">Unpaid</option>
-              <option value="partially paid">Partially Paid</option>
-            </select>
-          </div>
-          <div className="space-y-2">
-            <button
-              onClick={apply}
-              className="w-full bg-[#ff3b2e] hover:bg-[#e23428] text-white text-sm font-semibold py-2 rounded transition-colors"
-            >
-              Apply
-            </button>
-            <button
-              onClick={reset}
-              className="w-full bg-[#20c997] hover:bg-[#19b487] text-white text-sm font-semibold py-2 rounded transition-colors"
-            >
-              Reset
-            </button>
+        {/* RIGHT: Table */}
+        <div className="flex-1 bg-white border rounded-lg shadow-sm flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-auto p-4">
+            {renderSummaryCard()}
+
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-sm">
+                <thead className="sticky top-0 z-10 bg-gray-100">
+                  <tr className="text-gray-700">
+                    {["ID", "Name", "Actual Fee", "Discounted Fee", "Paid", "Lead Status", "Payment Status"].map((h) => (
+                      <th key={h} className="px-3 py-2 text-left font-semibold border border-gray-200 text-xs">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent"></div>
+                          Loading…
+                        </div>
+                      </td>
+                    </tr>
+                  ) : rows.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                        No records found
+                      </td>
+                    </tr>
+                  ) : (
+                    rows.map((p, idx) => (
+                      <tr key={`${p.lead_id}-${idx}`} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-3 py-2 border border-gray-200 text-xs">{p.lead_id}</td>
+                        <td className="px-3 py-2 border border-gray-200 text-xs truncate max-w-[150px]" title={p.name}>{p.name}</td>
+                        <td className="px-3 py-2 border border-gray-200 text-xs">{moneyIN(p.actual_fee)}</td>
+                        <td className="px-3 py-2 border border-gray-200 text-xs">{moneyIN(p.discounted_fee)}</td>
+                        <td className="px-3 py-2 border border-gray-200 text-xs font-medium">{moneyIN(p.fee_paid)}</td>
+                        <td className="px-3 py-2 border border-gray-200 text-xs">
+                          <span className="inline-block px-2 py-1 text-[10px] rounded-full bg-blue-100 text-blue-800 capitalize">
+                            {(p.status || '').replace(/([a-z])([A-Z])/g, '$1 $2')}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 border border-gray-200 text-xs">
+                          <span className={`inline-block px-2 py-1 text-[10px] rounded-full font-medium capitalize ${
+                            norm(p.paid_status) === 'paid' 
+                              ? 'bg-green-100 text-green-800'
+                              : norm(p.paid_status) === 'partially paid'
+                              ? 'bg-yellow-100 text-yellow-800'  
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {p.paid_status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
