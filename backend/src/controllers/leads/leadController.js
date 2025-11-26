@@ -905,6 +905,9 @@ exports.getLeads = async (req, res) => {
     params.push(meta_campaign_id);
   }
 
+  // Sort by newest leads first
+  query += ` ORDER BY leads.created_at DESC`;
+
   try {
     const { rowCount, rows } = await pool.query(query, params);
     if (!rowCount) {

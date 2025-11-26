@@ -314,16 +314,9 @@ const EditLeadForm = ({ open, onClose, leadId, onSaved }) => {
   const isReferralSource = sourceFlags.isReferralSource;
   const isMetaAdsSource = sourceFlags.isMetaAdsSource;
 
-  // Show Enrollment ID when lead reaches Enrollment (or later) or already has ID
+  // Show Enrollment ID when lead reaches Enrollment (or later)
   const showEnrollmentId = useMemo(() => {
     if (!leadData) return false;
-    const enrollmentId = leadData.enrollment_id;
-    const hasEnrollmentId =
-      typeof enrollmentId === "string"
-        ? enrollmentId.trim() !== ""
-        : enrollmentId !== null && enrollmentId !== undefined;
-
-    if (hasEnrollmentId) return true;
 
     const rawStatus = leadData.status;
     let statusValue = "";
